@@ -1,6 +1,24 @@
 tkMOO-lite-PLGd
 ===============
 
+This started out as just a hack to get the keyboard shortcuts to work,
+but has ended up as a major revision (for MacOSX)
+
+- removed backward compatibility... needs at least wish8.5
+- fixed Mac keyboard shortcuts
+- changed menus and keyboard shortcut behavior for fast MOO editting
+- 
+
+I must also add that I have never wasted as much time on such unreadable
+code in my life. Overloading menu creation code, hardcode entry labels,
+and no comments cost me a single solid day of headache. ARGH!
+
+-PLG
+
+
+README for tkMOO-light
+======================
+
 Please read the accompanying file 'LICENSE' for full license details.
 
 Please read the accompanying file 'INSTALL.*' for details about
