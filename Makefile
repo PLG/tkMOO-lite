@@ -16,11 +16,7 @@ TKMOO_BIN_DIR = $(HOME)/bin
 
 # which version of WISH will the client use? 'make' will warn you
 # if WISH can't be found where you say it is.
-WISH4.1 = /usr/local/bin/wish4.1
-WISH4.2 = /usr/local/bin/wish4.2
-WISH8.0 = /usr/local/bin/wish8.0
-WISH8.3	= /usr/local/bin/wish8.3
-WISH = $(WISH8.3)
+WISH = /usr/bin/wish
 
 # ---------------- NO NEED TO CHANGE ANYTHING BELOW THIS LINE ---------------
 
@@ -34,21 +30,22 @@ all: executable
 # some shells are set 'noclobber', so force overwriting of the
 # executable and installation
 clean:
-	\rm -f $(EXECUTABLE)
-	\rm -f $(TKMOO_BIN_DIR)/$(EXECUTABLE)
+	rm -f $(EXECUTABLE)
+	rm -f $(TKMOO_BIN_DIR)/$(EXECUTABLE)
 
 executable: clean
-	if [ ! -e $(WISH) ]; then \
+	@if [ ! -h $(WISH) ]; then \
 	    echo "***"; \
 	    echo "*** Can't find executable '$(WISH)', building anyway..."; \
 	    echo "*** You can set the correct path for the wish executable"; \
 	    echo "*** by editing the variable 'WISH' in this Makefile"; \
 	    echo "***"; \
 	fi
-	echo "#!$(WISH)" > $(EXECUTABLE)
-	echo "set tkmooLibrary $(TKMOO_LIB_DIR)" >> $(EXECUTABLE)
+	echo "#!/bin/sh" >> $(EXECUTABLE)
+	echo "# the next line restarts using wish \\" >> $(EXECUTABLE)
+	echo 'exec wish "$$0" "$$@" \n' >> $(EXECUTABLE)
+	echo "set tkmooLibrary $(TKMOO_LIB_DIR) \n" >> $(EXECUTABLE)
 	cat ./source.tcl >> $(EXECUTABLE)
-	# r-xr-xr-x
 	chmod 0555 $(EXECUTABLE)
 
 install: $(EXECUTABLE)
