@@ -15,8 +15,8 @@ and no comments cost me a single solid day of headache. ARGH!
 -PLG
 
 TODO:
-? Feature: a undo/redo
-? Feature: a revert to saved
+- Feature: a undo/redo
+- Feature: a revert to saved
 - Feature: shortcut keys for Find & Goto 
 - Feature: create a main menu "Window" option that lists all open windows.
 
