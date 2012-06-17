@@ -18,17 +18,16 @@
 # WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-set tkmooVersion "0.3.32"
-set tkmooBuildTime "Fri Dec 21 13:24:21 GMT 2001"
 
-if { $tcl_platform(platform) == "macintosh" } {
-    catch { console hide }
-}
-#
-#
+set tkmooVersion "0.4-PLGd"
+set tkmooBuildTime "Sun Jun 17 16:00:54 CEST 2012"
 
-if {[info tclversion] < 7.5} {
-    puts stderr "This application requires Tcl 7.5 or better.  This is only Tcl [info tclversion]"
+#if { $tcl_platform(platform) == "macintosh" } {
+#    catch { console hide }
+#}
+
+if {[info tclversion] < 8.5} {
+    puts stderr "This application requires Tcl 8.5 or better.  This is only Tcl [info tclversion]"
     exit 1
 }
 if {[regexp {7\.5(a|b).} [info patchlevel]]} {
@@ -373,7 +372,7 @@ proc client.login_dialog { uid pwd } {
 }
 
 proc client.default_settings {} {
-    global tcl_platform window_binding window_fonts client_echo
+    global window_binding window_fonts client_echo
 
     set font(proportional) plain
     set font(fixedwidth)   fixedwidth
@@ -392,9 +391,9 @@ proc client.default_settings {} {
  
     set echo [worlds.get_generic on {} {} LocalEcho]
     if { [string tolower $echo] == "on" } {
-	client.set_echo 1
+    	client.set_echo 1
     } {
-	client.set_echo 0
+    	client.set_echo 0
     }
 }
 
@@ -670,18 +669,25 @@ proc modules.client_disconnected {} {
     return $modules_module_deferred
 }
 #
-#
+
+#PLG keysym is CASE SENSITIVE!!!! So Control-O and Control-o are not the same!
+# http://www.tcl.tk/man/tcl/TkCmd/bind.htm
+# Cmd is NOT a binding!!!
+# 
+
+# cool thing about testing here is that you get an immediate script error is it is wrong =)
+# bind . <Command-o> { puts "Blah!" }
 
 proc bindings.bindings {} {
-    return [list emacs tf windows macintosh default]
+    return [list emacs tf windows mac default]
 }
 
 proc bindings.default {} {
     global bindings_db window_binding
     foreach binding [array names bindings_db] {
-	if { [regexp {^(.*):default:(.*)} $binding _ widget event] == 1 } {
-	    catch { bind $widget $event $bindings_db($binding) }
-	}
+		if { [regexp {^(.*):default:(.*)} $binding _ widget event] == 1 } {
+		    catch { bind $widget $event $bindings_db($binding) }
+		}
     }
     set window_binding default
 }
@@ -691,15 +697,16 @@ proc bindings.set emulate {
     global bindings_db window_binding
     bindings.default
     if { $emulate == "default" } {
-	return
+		return
     }
+
     foreach binding [array names bindings_db] {
 	if { [regexp {^(.*):(.*):(.*)} $binding _ widget emul event] == 1 } {
-	    if { ($emulate == $emul) } {
-	        set bindings_db($widget:default:$event) [bind $widget $event]
-	        catch { bind $widget $event $bindings_db($binding) }
-	    }
-	}
+		    if { ($emulate == $emul) } {
+		        set bindings_db($widget:default:$event) [bind $widget $event]
+		        catch { bind $widget $event $bindings_db($binding) }
+		    }
+		}
     }
     set window_binding $emulate
 }
@@ -757,22 +764,15 @@ set bindings_db(.input:windows:<Alt-n>) 	{ wm iconify . }
 set bindings_db(.input:windows:<Control-Home>) { ui.page_top .output }
 set bindings_db(.input:windows:<Control-End>) { ui.page_end .output }
 
-set bindings_db(Text:macintosh:<Command-c>)	{ ui.copy_selection %W }
-set bindings_db(Text:macintosh:<Command-v>)	{ ui.paste_selection %W }
-set bindings_db(Text:macintosh:<Command-x>)	{ ui.delete_selection %W }
-#set bindings_db(.:macintosh:<Command-q>)	{ client.exit }
+# set bindings_db(Text:mac:<Command-c>)	{ ui.copy_selection %W }
+# set bindings_db(Text:mac:<Command-v>)	{ ui.paste_selection %W }
+# set bindings_db(Text:mac:<Command-x>)	{ ui.delete_selection %W }
 
+set bindings_db(Text:mac:<Command-a>) [bind Text <Control-slash>]
+set bindings_db(Entry:mac:<Command-a>) [bind Entry <Control-slash>]
 
-set bindings_db(Text:macintosh:<Command-a>) [bind Text <Control-slash>]
-set bindings_db(Entry:macintosh:<Command-a>) [bind Entry <Control-slash>]
-
-set bindings_db(.input:macintosh:<Command-Home>) { ui.page_top .output }
-set bindings_db(.input:macintosh:<Command-End>) { ui.page_end .output }
-
-if { $tcl_platform(platform) == "windows" } {
-    set bindings_db(.:default:<Alt-F4>) 	{ client.exit }
-}
-
+set bindings_db(.input:mac:<Command-Home>) { ui.page_top .output }
+set bindings_db(.input:mac:<Command-End>) { ui.page_end .output }
 
 set bindings_db(.input:default:<Tab>) { window.dabbrev; break }
 
@@ -812,14 +812,22 @@ set bindings_db(.input:default:<Control-Up>)     "[bind Text <Up>]; break"
 set bindings_db(.input:default:<Control-Down>)     "[bind Text <Down>]; break"
 
 
-if { ($tcl_platform(platform) == "macintosh") ||
-     ($tcl_platform(platform) == "windows") } {
+if {$tcl_platform(os) == "Darwin"} {
+    set modifier Command
+} elseif {$tcl_platform(platform) == "windows"} {
+    set modifier Control
+} else {
+    set modifier Meta
+}
 
+# if { ($tcl_platform(os) == "Darwin") || ($tcl_platform(platform) == "windows") } {
+if { ($tcl_platform(os) == "Darwin") } {
 
-    set modifier(macintosh) Command
-    set modifier(windows) Control
+    # set modifier(macintosh) Command
+    # set modifier(windows) Control
 
-    set bindings_db(.output:default:<$modifier($tcl_platform(platform))-v>)       { ui.paste_selection .input;  focus .input }
+    # set bindings_db(.output:default:<$modifier($tcl_platform(platform))-v>) { ui.paste_selection .input;  focus .input }
+    set bindings_db(.output:default:<Command-v>) { ui.paste_selection .input;  focus .input }
 
     set bindings_db(.output:default:<1>)	{ focus .output }
     set bindings_db(.output:default:<Button1-ButtonRelease>) {
@@ -830,18 +838,14 @@ if { ($tcl_platform(platform) == "macintosh") ||
         }
     }
 }
-#
-#
 
+#
+#
 
 proc default.default {} {
-    if { [util.use_native_menus] } {
-         set menu .menu.prefs
-    } {
-         set menu .menu.prefs.menu
-    }
+    set menu .menu.prefs
     $menu.fonts invoke "fixedwidth"
-    $menu.bindings invoke "windows"
+    # $menu.bindings invoke "mac"
 }
 
 proc default.options {} {
@@ -850,20 +854,22 @@ proc default.options {} {
     option add *Entry.background #d3b6b6 userDefault
     option add *desktopBackground #d9d9d9 userDefault
     option add *BorderWidth 1 userDefault
-    if { $tcl_platform(platform) == "macintosh" } {
-        option add *Text.insertWidth 2 userDefault
-        option add *Entry.insertWidth 2 userDefault
-    }
-    if { $tcl_platform(platform) == "macintosh" } {
-        option add *Frame.background #cccccc userDefault
-        option add *Label.background #cccccc userDefault
-        option add *Toplevel.background #cccccc userDefault
-        option add *Checkbutton.background #cccccc userDefault
-        option add *Radiobutton.background #cccccc userDefault
-        option add *Menubutton.background #cccccc userDefault
-        option add *Scale.background #cccccc userDefault
-        option add *Text.highlightbackground #cccccc userDefault
-    }
+
+    #PLG:TODO    
+    # if { $tcl_platform(platform) == "macintosh" } {
+    #     option add *Text.insertWidth 2 userDefault
+    #     option add *Entry.insertWidth 2 userDefault
+    # }
+    # if { $tcl_platform(platform) == "macintosh" } {
+    #     option add *Frame.background #cccccc userDefault
+    #     option add *Label.background #cccccc userDefault
+    #     option add *Toplevel.background #cccccc userDefault
+    #     option add *Checkbutton.background #cccccc userDefault
+    #     option add *Radiobutton.background #cccccc userDefault
+    #     option add *Menubutton.background #cccccc userDefault
+    #     option add *Scale.background #cccccc userDefault
+    #     option add *Text.highlightbackground #cccccc userDefault
+    # }
 }
 #
 #
@@ -934,7 +940,6 @@ set help_subject_list {
     Resources
     CommandLine
     Plugins
-    Manners
     SEPARATOR
     About
     LICENCE
@@ -1792,80 +1797,6 @@ set help_subject(Preferences) {
 
 }
 
-set help_subject(Manners) {
-    {title How to behave on a MUD}
-    {header How to behave on a MUD}
-
-    Each MUD you visit will have its own distinct character and
-    set of social rules for moderating behaviour.  Some places are
-    very formal and others are anarchistic.  The one thing all MUDs
-    have in common is that {bold REAL LIVE PEOPLE} are connected
-    to the players, and users you will meet.  Here are some general
-    guidelines for getting along with people when you visit a new
-    MUD.
-
-    {paragraph foo}
-
-    {header Be polite.  Avoid being rude}
-
-    The MUD is worth participating in because it is a pleasant
-    place for people to be.  When people are rude or nasty to one
-    another, it stops being so pleasant.  
-
-    {paragraph foo}
-
-    {header Respect other player's sensibilities}
-
-    The participants on the MUD come from a wide range of cultures
-    and backgrounds.  Your ideas about what constitutes offensive
-    speech or descriptions are likely to differ from those of other
-    players.  Please keep the text that players can casually run
-    across as free of potentially-offensive material as you can.
-    If you want to build objects or areas that are likely to offend
-    some segment of the community, please give sufficient warning
-    to the casual explorer so that they can choose to avoid those
-    objects or areas.
-
-    {paragraph foo}
-
-    {header Don't spoof}
-
-    Spoofing is loosely defined as `causing misleading output to
-    be printed to other players.'  For example, it would be spoofing
-    for anyone but Munchkin to print out a message like `Munchkin
-    sticks out his tongue at Potrzebie.'  This makes it look like
-    Munchkin is unhappy with Potrzebie even though that may not be
-    the case at all.  Please be aware that, while it is easy to
-    write MUD programs that spoof, it is usually easy to detect
-    such spoofing and correctly trace it to its source.
-
-    {paragraph foo}
-
-    {header Don't shout}
-
-    It is easy to write a MUD command that prints a message to
-    every connected player in the MUD.  Please don't.  It is
-    generally annoying to receive such messages; such shouting
-    should be reserved for really important uses, like wizards
-    telling everyone that the server is about to be shut down.
-    Non-wizards never have a good enough reason to shout.  Use
-    `page' instead.
-
-    {paragraph foo}
-
-    {header Only teleport your own things}
-
-    By default, most objects (including other players) allow
-    themselves to be moved freely from place to place within the
-    MUD.  This fact makes it easier to build useful objects like
-    exits and magic rings that move things as a part of their normal
-    role in the virtual reality.  Unfortunately, it also makes it
-    easy to move other players from place to place without their
-    permission, or to move objects in and out of other players'
-    possession.  Please don't do this; it's annoying (at the least)
-    to the poor victim and can only cause bad feelings.
-}
-
 set help_subject(LICENCE) {
     {title LICENCE}
     {header LICENCE}
@@ -2027,7 +1958,7 @@ proc fonts.italic {} {
     global fonts_italic
     return [worlds.get_generic $fonts_italic fontItalic FontItalic FontItalic]
 }
-#
+
 #
 #
 
@@ -2090,13 +2021,18 @@ proc window.place_absolute {win x y} {
 }
 proc window.place_nice {this {that ""}} {
     if { $that != "" } {
-	set x [winfo rootx $that]
-	set y [winfo rooty $that]
-	incr x 50
-	incr y 50
-	window.place_absolute $this $x $y
+        #PLG DOES THIS EVER HAPPEN !?
+    	set x [winfo rootx $that]
+    	set y [winfo rooty $that]
+
+        puts $x
+        puts $y
+
+    	incr x 50
+    	incr y 50
+    	window.place_absolute $this $x $y
     } {
-	window.place_absolute $this 50 50
+    	window.place_absolute $this 50 50
     }
 }
 
@@ -2109,98 +2045,94 @@ proc window.set_geometry {win geometry} {
 
 proc window.bind_escape_to_destroy win {
     global tcl_platform
-    if { $tcl_platform(platform) != "macintosh" } {
+    if { $tcl_platform(os) != "Darwin" } {
         bind $win <Escape> "destroy $win"
     }
 }
 
 proc window.configure_for_macintosh win {
     global tcl_platform
-    if { $tcl_platform(platform) != "macintosh" } {
-	return;
+    if { $tcl_platform(os) != "Darwin" } {
+    	return;
     }
-    set mac _macintosh
-    if { $win != "." } {
-	set mac "._macintosh"
-    }
+    #PLG:TODO
+    # set mac _macintosh
+    # if { $win != "." } {
+    # set mac "._macintosh"
+    # }
 
-    set topline "_topline"
-    set cell "_cell"
-    if { [winfo exists $win$mac$topline] } {
-	return;
-    }
+    # set topline "_topline"
+    # set cell "_cell"
+    # if { [winfo exists $win$mac$topline] } {
+    # return;
+    # }
 
-    frame $win$mac$topline \
-	-height 1 \
-	-borderwidth 0 \
-	-highlightthickness 0 \
-	-background #000000
-    frame $win$mac$cell \
-	-height 14 \
-	-borderwidth 0 \
-	-highlightthickness 0 \
-	-background #cccccc
-    window.pack_for_macintosh $win
+    # frame $win$mac$topline \
+    # -height 1 \
+    # -borderwidth 0 \
+    # -highlightthickness 0 \
+    # -background #000000
+    # frame $win$mac$cell \
+    # -height 14 \
+    # -borderwidth 0 \
+    # -highlightthickness 0 \
+    # -background #cccccc
+    # window.pack_for_macintosh $win
 }
 
 proc window.pack_for_macintosh win {
     global tcl_platform
-    if { $tcl_platform(platform) != "macintosh" } {
-	return;
+    if { $tcl_platform(os) != "Darwin" } {
+        return;
     }
-    set mac _macintosh
-    if { $win != "." } {
-	set mac "._macintosh"
-    }
-    set topline "_topline"
-    set cell "_cell"
-    pack $win$mac$cell \
-	-side bottom \
-	-fill x \
-	-in $win
-    pack $win$mac$topline \
-	-side bottom \
-	-fill x \
-	-in $win
+    #PLG:TODO
+    # set mac _macintosh
+    # if { $win != "." } {
+    # set mac "._macintosh"
+    # }
+    # set topline "_topline"
+    # set cell "_cell"
+    # pack $win$mac$cell \
+    # -side bottom \
+    # -fill x \
+    # -in $win
+    # pack $win$mac$topline \
+    # -side bottom \
+    # -fill x \
+    # -in $win
 }
 
 proc window.toolbar_look frame {
     global tcl_platform
 
     if { $tcl_platform(platform) == "windows" } {
-	set sep $frame.__separator
-	frame $sep -highlightthickness 0 -bd 2 -relief sunken -height 2
-	pack $sep -side top -fill x
+        set sep $frame.__separator
+        frame $sep -highlightthickness 0 -bd 2 -relief sunken -height 2
+        pack $sep -side top -fill x
         $frame configure -relief flat -bd 0 -highlightthickness 0
-	return
-    }
-    if { 0 && $tcl_platform(platform) == "macintosh" } {
-	set sep $frame.__separator
-	frame $sep -highlightthickness 0 -bd 2 -relief sunken -height 2
-	pack $sep -side bottom -fill x
-        $frame configure -relief flat -bd 0 -highlightthickness 0
-	return
-    }
-    if { $tcl_platform(platform) == "macintosh" } {
-        $frame configure -relief raised -bd 1 -highlightthickness 0
-	return
-    }
+        return;
+    } 
+    # if { 0 && $tcl_platform(platform) == "macintosh" } {
+    #     set sep $frame.__separator
+    #     frame $sep -highlightthickness 0 -bd 2 -relief sunken -height 2
+    #     pack $sep -side bottom -fill x
+    #     $frame configure -relief flat -bd 0 -highlightthickness 0
+    #     return
+    # }
     if { $tcl_platform(platform) == "unix" } {
+        # also if $tcl_platform(os) == "Darwin"
+        #
         $frame configure -relief raised -bd 1 -highlightthickness 0
+        return;
     }
 }
-
-
 
 proc window.set_scrollbar_look scrollbar {
     global tcl_platform
     if { $tcl_platform(platform) == "unix" } {
         $scrollbar configure -width 10
-	return
-    }
-    if { $tcl_platform(platform) == "macintosh" } {
+    } elseif { $tcl_platform(platform) == "macintosh" } {
         $scrollbar configure -bd 0
-	return
     }
 }
 
@@ -2230,12 +2162,10 @@ set window_close_state disabled
 
 proc window.hidemargin menu {
     global tcl_platform
-    if { $tcl_platform(platform) == "windows" } {
-	return
+    if { ($tcl_platform(os) == "Darwin") || ($tcl_platform(platform) == "windows") } {
+    	return
     }
-    if { $tcl_platform(platform) == "macintosh" } {
-	return
-    }
+
     if { ([util.eight] == 1) && ([$menu type end] != "separator") } {
         $menu entryconfigure end -hidemargin 1
     }
@@ -2248,7 +2178,7 @@ proc window.save_layout {} {
     set worlds_geometry [worlds.get_generic "=50x24" {} {} WindowGeometry]
     set actual_geometry [wm geometry .]
     if { $worlds_geometry != $actual_geometry } {
-	worlds.set $world WindowGeometry $actual_geometry
+    	worlds.set $world WindowGeometry $actual_geometry
     }
 }
 
@@ -2327,7 +2257,6 @@ proc window.start {} {
               {low 0}
 	      {high 10}}
     }
-    if { [util.use_native_menus] } {
     preferences.register window {Statusbar Settings} {
         { {directive ShowStatusbars}
               {type boolean}
@@ -2346,7 +2275,6 @@ proc window.start {} {
               {high 30}
               {display "Kiosk after seconds"} }
     }
-    }
 }
 
 
@@ -2354,10 +2282,6 @@ set window_activity_flash 0
 set window_activity_toggle 0
 
 proc window.activity_flash {} {
-    if { ![util.use_native_menus] } {
-         window.old.activity_flash
-         return
-    }
     global window_activity_flash window_activity_toggle \
        window_activity_flash_colour window_flash
     if { [winfo exists $window_flash] == 0 } { return }
@@ -2379,29 +2303,6 @@ proc window.activity_flash {} {
         set window_activity_toggle 1
     }
     after 500 window.activity_flash
-}
-
-proc window.old.activity_flash {} {
-   global window_activity_flash window_activity_toggle \
-      window_activity_flash_colour
-   if { $window_activity_flash == 0 } { 
-       .menu.flash configure -background $window_activity_flash_colour
-       return 
-   }
-   if { [window._last_char_is_visible] == 1 } {
-       .menu.flash configure -background $window_activity_flash_colour
-       set window_activity_flash 0
-       set window_activity_toggle 0
-       return
-   }
-   if { $window_activity_toggle == 1 } {
-       .menu.flash configure -background red
-       set window_activity_toggle 0
-   } {
-       .menu.flash configure -background $window_activity_flash_colour
-       set window_activity_toggle 1
-   }
-   after 500 window.activity_flash
 }
 
 proc window.activity_begin_flashing {} {
@@ -2436,11 +2337,11 @@ set window_statusbars {}
 proc window.add_statusbar statusbar {
     global window_statusbars
     if { [lsearch -exact $window_statusbars $statusbar] == -1 } {
-	if { $statusbar == ".statusbar" } {
-	    set window_statusbars [linsert $window_statusbars 0 $statusbar]
-	} {
-            lappend window_statusbars $statusbar
-	}
+    	if { $statusbar == ".statusbar" } {
+    	    set window_statusbars [linsert $window_statusbars 0 $statusbar]
+    	} {
+                lappend window_statusbars $statusbar
+    	}
     }
 }
 proc window.remove_statusbar statusbar {
@@ -2450,9 +2351,6 @@ proc window.remove_statusbar statusbar {
         set window_statusbars [lreplace $window_statusbars $index $index]
     }
 }
-
-
-
 
 proc window.statusbar_create {} {
     if { [winfo exists .statusbar] == 1 } { return }
@@ -2482,7 +2380,7 @@ proc window.statusbar_destroy {} {
 proc window.truncate_for_label {label text} {
     global tk_version
     if { $tk_version < 8.0 } {
-	return $text
+    	return $text
     }
     set width [winfo width $label]
     set padx [$label cget -padx]
@@ -2500,15 +2398,14 @@ proc window.truncate_for_label {label text} {
         }   
     }
     if { $i == 0 } {
-	return ""
+    	return ""
     }
     return $text
 }
 
 proc window.statusbar_messages_repaint {} {
     global window_statusbar_message
-    .statusbar.messages configure \
-        -text [window.truncate_for_label .statusbar.messages $window_statusbar_message]
+    .statusbar.messages configure -text [window.truncate_for_label .statusbar.messages $window_statusbar_message]
 }
 
 proc window.set_status {text {type decay}} {
@@ -2517,10 +2414,10 @@ proc window.set_status {text {type decay}} {
     set window_statusbar_message $text
     window.statusbar_messages_repaint
     catch { 
-    after cancel $window_statusbar_current_task_id 
+        after cancel $window_statusbar_current_task_id 
     }
     if { $type == "decay" } {
-	set window_statusbar_current_task_id [after 20000 window.statusbar_decay]
+    	set window_statusbar_current_task_id [after 20000 window.statusbar_decay]
     }
 }
 
@@ -2546,14 +2443,8 @@ proc window.client_connected {} {
     global window_close_state window_fonts tkmooVersion
     set window_close_state normal
 
-    if { [util.use_native_menus] } {
-        .menu.connections entryconfigure "Close" -state normal
-    } {
-        .menu.connections.menu entryconfigure "Close" -state normal
-    }
-
-
-
+    .menu.connections entryconfigure "Close Connection" -state normal
+    
     set size [worlds.get_generic 1 {} {} InputSize]
 
     if { $size < 1 } { set size 1 };
@@ -2634,15 +2525,12 @@ proc window.client_connected {} {
 
     window.statusbar_destroy
 
-    if { [util.use_native_menus] } {
-        set use_flash [worlds.get_generic On {} {} UseActivityFlash]
-        if { [string tolower $use_flash] == "on" } {
-            window.make_flash
-        } {
-            window.destroy_flash
-        }
+    set use_flash [worlds.get_generic On {} {} UseActivityFlash]
+    if { [string tolower $use_flash] == "on" } {
+        window.make_flash
+    } {
+        window.destroy_flash
     }
-
 
 
     set resize [worlds.get_generic 0 {} {} WindowResize]
@@ -2697,11 +2585,7 @@ proc window.client_disconnected {} {
     window.clear_status_if_present
     window.menu_preferences_state "Edit Preferences..." disabled
 
-    if { [util.use_native_menus] } {
-        .menu.connections entryconfigure "Close" -state disabled
-    } {
-        .menu.connections.menu entryconfigure "Close" -state disabled
-    }
+    .menu.connections entryconfigure "Close Connection" -state disabled
 }
 
 proc window.do_open {} {
@@ -2727,9 +2611,7 @@ proc window.open {} {
     label .open.entries.h -text "Host:"
     entry .open.entries.host -font [fonts.fixedwidth]
     label .open.entries.p -text "Port:"
-    entry .open.entries.port \
-	-width 4 \
-	-font [fonts.fixedwidth]
+    entry .open.entries.port -width 4 -font [fonts.fixedwidth]
     pack .open.entries.h -side left
     pack .open.entries.host -side left
     pack .open.entries.p -side left
@@ -2737,8 +2619,7 @@ proc window.open {} {
 
     frame .open.buttons
 
-    button .open.buttons.connect -text "Connect" \
-	-command { window.do_open }
+    button .open.buttons.connect -text "Connect" -command { window.do_open }
 
     bind .open <Return> { window.do_open };
     window.bind_escape_to_destroy .open
@@ -2748,14 +2629,13 @@ proc window.open {} {
     pack .open.entries
     pack .open.buttons
 
-    pack .open.buttons.connect .open.buttons.cancel -side left \
-	-padx 5 -pady 5
+    pack .open.buttons.connect .open.buttons.cancel -side left -padx 5 -pady 5
     window.focus .open.entries.host
 }
 
 proc window.menuise_worlds {} {
     catch {
-	.menu.connections.menu delete 5 end
+    	.menu.connections.menu delete 5 end
     }
     .menu.connections.menu add separator
     set hints [split 0123456789abdfghijklmnprstuvwxyz {}]
@@ -2764,7 +2644,7 @@ proc window.menuise_worlds {} {
 	set hints [lrange $hints 1 end]
         .menu.connections.menu add command \
         -label   "$hint. [worlds.get $world Name]"\
-	-underline 0 \
+    	-underline 0 \
         -command "client.connect_world \"$world\""
     }
 }
@@ -2772,87 +2652,65 @@ proc window.menuise_worlds {} {
 proc window.do_disconnect {} {
     set session ""
     catch {
-    set session [db.get .output session]
+        set session [db.get .output session]
     }
     if { $session != "" } {
-	client.disconnect_session $session
+    	client.disconnect_session $session
     }
 }
 
 proc window.post_connect {} {
     global tcl_platform
-    if { [util.use_native_menus] } {
 	set menu .menu.connections
-    } {
-	set menu .menu.connections.menu
-    }
 
     global window_close_state
 
     $menu delete 0 end
 
-    $menu add command \
-	-label "Worlds..." \
-	-underline 0 \
-	-command "window.open_list"
-    window.menu_macintosh_accelerator $menu "Worlds..." "Cmd+W"
+    $menu add command -label "Worlds..." -underline 0 -command "window.open_list"
     window.hidemargin $menu
 
-    $menu add command \
-	-label "Open..." \
-	-underline 0 \
-	-command "window.open"
-    window.menu_macintosh_accelerator $menu "Open..." "Cmd+O"
+    $menu add command -label "Open Connection..." -underline 0 -command "window.open"
     window.hidemargin $menu
 
-    $menu add command \
-	-label "Close" \
-	-underline 0 \
-	-command "window.do_disconnect"
-    window.menu_macintosh_accelerator $menu Close "Cmd+K"
+    $menu add command -label "Close Connection" -underline 0 -command "window.do_disconnect" -accelerator "[window.accel Ctrl]+K"
+    bind . <Command-k> "window.do_disconnect"
     window.hidemargin $menu
 
-    $menu entryconfigure "Close" -state $window_close_state
+    $menu entryconfigure "Close Connection" -state $window_close_state
 
     $menu add separator
 
-    if { $tcl_platform(platform) == "macintosh" } {
+    if { $tcl_platform(os) == "Darwin" } {
         set hints [split 0123456789 {}]
     } {
         set hints [split 0123456789abdefghijklmnprstuvxyz {}]
     }
 
-
     foreach world [worlds.worlds] {
-	if { $world != 0 } {
-	    set shortlist ""
-	    catch { set shortlist [worlds.get_generic "Off" {} {} ShortList $world] }
+    	if { $world != 0 } {
+    	    set shortlist ""
+    	    catch { set shortlist [worlds.get_generic "Off" {} {} ShortList $world] }
 
-	    if { [string tolower $shortlist] == "on" } {
-	        set hint [lindex $hints 0]
-	        set hints [lrange $hints 1 end]
-		if { $tcl_platform(platform) == "macintosh" } {
-		    set label [worlds.get $world Name]
-		} {
-		    set label "$hint. [worlds.get $world Name]"
-		}
-                $menu add command \
-                    -label $label \
-	            -underline 0 \
-                    -command "client.connect_world $world"
-		window.menu_macintosh_accelerator $menu end "Cmd+$hint"
+    	    if { [string tolower $shortlist] == "on" } {
+    	        set hint [lindex $hints 0]
+    	        set hints [lrange $hints 1 end]
+
+        		if { $tcl_platform(os) == "Darwin" } {
+                    set label [worlds.get $world Name]
+        		} {
+        		    set label "$hint. [worlds.get $world Name]"
+        		}
+
+                $menu add command -label $label -underline 0 -command "client.connect_world $world" -accelerator "Cmd+$hint"
+                bind . <Command-$hint> "client.connect_world $world"
                 window.hidemargin $menu
-	    }
-	}
+    	    }
+    	}
     }
 
-    $menu add separator
-    $menu add command \
-	-label "Quit" \
-	-underline 0 \
-	-command "client.exit"
-
-
+    # $menu add separator
+    # $menu add command -label "Quit" -underline 0 -command "client.exit"
 
     window.hidemargin $menu
 }
@@ -2865,19 +2723,13 @@ proc window.load_connections_menu {} {
 }
 
 proc window.configure_help_menu {} {
-    if { [util.use_native_menus] } {
 	set menu .menu.help
-    } {
-	set menu .menu.help.menu
-    }
     $menu delete 0 end
     foreach subject [help.subjects] {
         if { $subject == "SEPARATOR" } {
 	    $menu add separator
         } {
-            $menu add command \
-                -label   "[help.get_title $subject]" \
-                -command "help.show $subject"
+            $menu add command -label "[help.get_title $subject]" -command "help.show $subject"
             window.hidemargin $menu
         }
     }
@@ -2885,91 +2737,54 @@ proc window.configure_help_menu {} {
 
 
 proc window.menu_help_add { text {command ""} } {
-    if { [util.use_native_menus] } {
 	set menu .menu.help
-    } {
-	set menu .menu.help.menu
-    }
+
     if { $text == "SEPARATOR" } {
 	$menu add separator
     } {
-        $menu add command \
-            -label   "$text" \
-            -command $command
+        $menu add command -label "$text" -command $command
         window.hidemargin $menu
     }
 }
 
 proc window.menu_help_state { text state } {
-    if { [util.use_native_menus] } {
-        .menu.help entryconfigure $text -state $state
-    } {
-        .menu.help.menu entryconfigure $text -state $state
-    }
+    .menu.help entryconfigure $text -state $state
 }
 
-proc window.menu_tools_macintosh_accelerator { text accelerator } {
-    if { [util.use_native_menus] } {
-        set menu .menu.tools
-    } {
-        set menu .menu.tools.menu
-    }
-    window.menu_macintosh_accelerator $menu $text $accelerator
-}
+# proc window.menu_tools_macintosh_accelerator { text accelerator } {
+#     set menu .menu.tools
+#     window.menu_macintosh_accelerator $menu $text $accelerator
+# }
 
-proc window.menu_tools_add { text {command ""} } {
-    if { [util.use_native_menus] } {
+proc window.menu_tools_add { text {command ""} accelerator } {
 	set menu .menu.tools
-    } {
-	set menu .menu.tools.menu
-    }
     if { $text == "SEPARATOR" } {
-	$menu add separator
+    	$menu add separator
     } {
-        $menu add command \
-            -label   "$text" \
-            -command $command
+        $menu add command -label "$text" -command $command -accelerator $accelerator
         window.hidemargin $menu
     }
 }
 
 proc window.menu_tools_state { text state } {
-    if { [util.use_native_menus] } {
-        .menu.tools entryconfigure $text -state $state
-    } {
-        .menu.tools.menu entryconfigure $text -state $state
-    }
+    .menu.tools entryconfigure $text -state $state
 }
 
-proc window.menu_preferences_macintosh_accelerator { text accelerator } {
-    if { [util.use_native_menus] } {
-        set menu .menu.prefs
-    } {
-        set menu .menu.prefs.menu
-    }
-    window.menu_macintosh_accelerator $menu $text $accelerator
-}
+# proc window.menu_preferences_macintosh_accelerator { text accelerator } {
+#     set menu .menu.prefs
+#     window.menu_macintosh_accelerator $menu $text $accelerator
+# }
 
 proc window.menu_preferences_state { text state } {
-    if { [util.use_native_menus] } {
-        .menu.prefs entryconfigure $text -state $state
-    } {
-        .menu.prefs.menu entryconfigure $text -state $state
-    }
+    .menu.prefs entryconfigure $text -state $state
 }
 
 proc window.menu_preferences_add { text {command ""} } {
-    if { [util.use_native_menus] } {
 	set menu .menu.prefs
-    } {
-	set menu .menu.prefs.menu
-    }
     if { $text == "SEPARATOR" } {
-	$menu add separator
+    	$menu add separator
     } {
-        $menu add command \
-            -label   "$text" \
-            -command $command
+        $menu add command -label   "$text" -command $command
         window.hidemargin $menu
     }
 }
@@ -2977,14 +2792,14 @@ proc window.menu_preferences_add { text {command ""} } {
 proc window.reconfigure_fonts {} {
     global window_fonts
     switch $window_fonts {
-	fixedwidth {
-	    .output configure -font [fonts.fixedwidth]
-	    .input configure -font [fonts.fixedwidth]
-	}
-	proportional {
-           .output configure -font [fonts.plain]
-           .input configure -font [fonts.plain]
-	}
+    	fixedwidth {
+    	    .output configure -font [fonts.fixedwidth]
+    	    .input configure -font [fonts.fixedwidth]
+    	}
+    	proportional {
+               .output configure -font [fonts.plain]
+               .input configure -font [fonts.plain]
+    	}
     }
 }
 
@@ -2992,16 +2807,16 @@ proc window.resize_event {} {
     global window_resize_event_task
     catch { after cancel $window_resize_event_task }
     set window_resize_event_task [after idle {
-	window.save_layout
+    	window.save_layout
     }]
 }
 
-proc window.menu_macintosh_accelerator {menu pattern accelerator} {
-    global tcl_platform
-    if { $tcl_platform(platform) == "macintosh" } {
-        $menu entryconfigure $pattern -accelerator $accelerator
-    }
-}
+# proc window.menu_macintosh_accelerator {menu pattern accelerator} {
+#     global tcl_platform
+#     if { $tcl_platform(os) == "Darwin" } {
+#         $menu entryconfigure $pattern -accelerator $accelerator
+#     }
+# }
 
 ###
 proc window.set_local_echo_from_menu {} {
@@ -3063,192 +2878,140 @@ proc window.toggle_statusbar_from_menu {} {
 
 proc window.buildWindow {} {
     window.set_statusbar_flag 1
-    if { ![util.use_native_menus] } {
-       window.old.buildWindow
-         return
-    }
-    global tkmooVersion client_mode client_echo \
-        window_activity_flash_colour window_flash
+    global tkmooVersion client_mode client_echo window_activity_flash_colour window_flash
 
     wm title    . "tkMOO-light"
     wm iconname . "tkMOO-light"
     . configure -bd 0
 
-    window.configure_for_macintosh .
+    wm geometry . "+0+0"
 
-        menu .menu -bd 0 -tearoff 0 -relief raised -bd 1
-        . configure -menu .menu
+    #PLG:TODO window.configure_for_macintosh .
 
-        .menu add cascade -label "Connect" -menu .menu.connections \
-             -underline 0
+    menu .menu -bd 0 -tearoff 0 -relief raised -bd 1
+    . configure -menu .menu
 
-             menu .menu.connections -tearoff 0 -bd 1
+    .menu add cascade -label "Connect" -underline 0 -menu .menu.connections
+    menu .menu.connections -tearoff 0 -bd 1
 
-        .menu add cascade -label "Edit" -underline 0 -menu .menu.edit
-            menu .menu.edit -tearoff 0 -bd 1
-            .menu.edit add command -label "Cut" \
-                -command "ui.delete_selection .input" \
-		-accelerator "[window.accel Ctrl]+X"
-            window.hidemargin .menu.edit
-            .menu.edit add command -label "Copy" \
-                -command "ui.copy_selection .input" \
-		-accelerator "[window.accel Ctrl]+C"
-            window.hidemargin .menu.edit
-            .menu.edit add command -label "Paste" \
-                -command "ui.paste_selection .input" \
-		-accelerator "[window.accel Ctrl]+V"
-            window.hidemargin .menu.edit
-            .menu.edit add separator
-            .menu.edit add command -label "Clear" \
-		-underline 1 \
-                -command "ui.clear_screen .output"
-	    window.menu_macintosh_accelerator .menu.edit Clear "Cmd+L"
-            window.hidemargin .menu.edit
+    .menu add cascade -label "Edit" -underline 0 -menu .menu.edit
+    menu .menu.edit -tearoff 0 -bd 1
+    .menu.edit add command -label "Cut" -command "ui.delete_selection .input" -accelerator "[window.accel Ctrl]+X"
+    window.hidemargin .menu.edit
+    .menu.edit add command -label "Copy" -command "ui.copy_selection .input" -accelerator "[window.accel Ctrl]+C"
+    window.hidemargin .menu.edit
+    .menu.edit add command -label "Paste" -command "ui.paste_selection .input" -accelerator "[window.accel Ctrl]+V"
+    window.hidemargin .menu.edit
+    .menu.edit add separator
+    .menu.edit add command -label "Clear" -underline 1 -command "ui.clear_screen .output" -accelerator "[window.accel Ctrl]+L"
+    window.hidemargin .menu.edit
 
-        .menu add cascade -label "Tools" -underline 0 -menu .menu.tools
-        menu .menu.tools -tearoff 0 -bd 1
+    .menu add cascade -label "Tools" -underline 0 -menu .menu.tools
+    menu .menu.tools -tearoff 0 -bd 1
 
-        .menu add cascade -label "Preferences" -underline 0 -menu .menu.prefs
-        menu .menu.prefs -tearoff 0 -bd 1
+    .menu add cascade -label "Preferences" -underline 0 -menu .menu.prefs
+    menu .menu.prefs -tearoff 0 -bd 1
 
-	    window.menu_preferences_add "Toggle Statusbars" \
-		window.toggle_statusbar_from_menu
+    window.menu_preferences_add "Toggle Statusbars" window.toggle_statusbar_from_menu
 
-            .menu.prefs add cascade -label "Key Bindings" \
-                 -menu .menu.prefs.bindings
-            window.hidemargin .menu.prefs
-            menu .menu.prefs.bindings -tearoff 0
+    .menu.prefs add cascade -label "Key Bindings" -menu .menu.prefs.bindings
+    window.hidemargin .menu.prefs
+    menu .menu.prefs.bindings -tearoff 0
 
-            foreach binding [bindings.bindings] {
-                .menu.prefs.bindings add radio \
-                    -variable window_binding \
-                    -value $binding \
-                    -label "$binding" \
-                    -command "window.set_key_bindings_from_menu"
-            }
+    foreach binding [bindings.bindings] {
+        .menu.prefs.bindings add radio -variable window_binding -value $binding -label "$binding" -command "window.set_key_bindings_from_menu"
+    }
 
+    .menu.prefs add cascade -label "Default Font" -menu .menu.prefs.fonts
+    window.hidemargin .menu.prefs
 
-            .menu.prefs add cascade \
-                -label "Default Font" -menu .menu.prefs.fonts
-            window.hidemargin .menu.prefs
+    menu .menu.prefs.fonts -tearoff 0
 
-                menu .menu.prefs.fonts -tearoff 0
+    foreach font {fixedwidth proportional} {
+        .menu.prefs.fonts add radio -variable window_fonts -value $font -label "$font" -command window.set_default_font_from_menu
+    }
 
-                foreach font {fixedwidth proportional} {
-                    .menu.prefs.fonts add radio \
-                            -variable window_fonts \
-                            -value $font \
-                            -label "$font" \
-                            -command window.set_default_font_from_menu
-                }
+    .menu.prefs add cascade -label "Mode" -menu .menu.prefs.mode
+    window.hidemargin .menu.prefs
+    menu .menu.prefs.mode -tearoff 0
 
-            .menu.prefs add cascade -label "Mode" \
-                -menu .menu.prefs.mode
-            window.hidemargin .menu.prefs
-            menu .menu.prefs.mode -tearoff 0
+    foreach mode {line character} {
+        .menu.prefs.mode add radio -variable client_mode -value $mode -label "$mode" -command "window.set_client_mode_from_menu"
+    }
 
-            foreach mode {line character} {
-                .menu.prefs.mode add radio \
-                    -variable client_mode \
-                    -value $mode \
-                    -label "$mode" \
-                    -command "window.set_client_mode_from_menu"
-            }
+    .menu.prefs add cascade -label "Local Echo" -menu .menu.prefs.local
+    window.hidemargin .menu.prefs
+    menu .menu.prefs.local -tearoff 0
 
+    .menu.prefs.local add radio -variable client_echo -value 1 -command "window.set_local_echo_from_menu" -label "on"
+    .menu.prefs.local add radio -variable client_echo -command "window.set_local_echo_from_menu" -value 0 -label "off"
 
-            .menu.prefs add cascade -label "Local Echo" \
-                -menu .menu.prefs.local
-            window.hidemargin .menu.prefs
-            menu .menu.prefs.local -tearoff 0
+    .menu.prefs add cascade -label "Input Size" -menu .menu.prefs.size
+    window.hidemargin .menu.prefs
 
-            .menu.prefs.local add radio \
-                -variable client_echo \
-                -value 1 \
-                -command "window.set_local_echo_from_menu" \
-                -label "on"
-            .menu.prefs.local add radio \
-                -variable client_echo \
-                -command "window.set_local_echo_from_menu" \
-                -value 0 \
-                -label "off"
+    menu .menu.prefs.size -tearoff 0
+    for {set i 1} {$i < 6} {incr i} {
+        .menu.prefs.size add radio -variable window_input_size_display -value $i -label "$i" -command window.set_input_size_from_menu
+    }
 
-            .menu.prefs add cascade \
-                -label "Input Size" -menu .menu.prefs.size
-            window.hidemargin .menu.prefs
-
-                menu .menu.prefs.size -tearoff 0
-                for {set i 1} {$i < 6} {incr i} {
-                    .menu.prefs.size add radio \
-                        -variable window_input_size_display \
-                        -value $i \
-                        -label "$i" \
-                        -command window.set_input_size_from_menu
-                }
-
-
-        .menu add cascade -label "Help" -underline 0 -menu .menu.help
-        menu .menu.help -tearoff 0 -bd 1
+    .menu add cascade -label "Help" -underline 0 -menu .menu.help
+    menu .menu.help -tearoff 0 -bd 1
 
 	window.configure_help_menu
 
-        global tcl_platform
-        if { $tcl_platform(platform) == "windows" } {
+    global tcl_platform
+    if { $tcl_platform(platform) == "windows" } {
 	    frame .canyon -bd 2 -height 2 -relief sunken
-        }
+    }
 
-        text .output \
-            -cursor {} \
-            -font [fonts.fixedwidth] \
-            -width 80 \
-            -height 24 \
-            -setgrid 1 \
-            -relief flat \
-            -bd 0 \
-            -yscrollcommand ".scrollbar set" \
-            -highlightthickness 0 \
-            -wrap word
+    #PLG window size
+    text .output -cursor {} \
+        -font [fonts.fixedwidth] \
+        -width 110 -height 35 \
+        -setgrid 1 \
+        -relief flat \
+        -bd 0 \
+        -yscrollcommand ".scrollbar set" \
+        -highlightthickness 0 \
+        -wrap word
 
-        text .input \
-	    -wrap word \
-	    -relief sunken \
-            -height 1 \
-            -highlightthickness 0 \
-            -font [fonts.fixedwidth] \
-            -background [colourdb.get pink]
+    text .input \
+        -wrap word \
+        -relief sunken \
+        -height 1 \
+        -highlightthickness 0 \
+        -font [fonts.fixedwidth] \
+        -background [colourdb.get pink]
 
-        history.init .input 1
+    history.init .input 1
 
-        scrollbar .scrollbar \
-            -command ".output yview" \
-            -highlightthickness 0
+    scrollbar .scrollbar -command ".output yview" -highlightthickness 0
 
-        window.set_scrollbar_look .scrollbar
+    window.set_scrollbar_look .scrollbar
 
-        window.repack
-
+    window.repack
 
 	update
 	pack propagate . 0
 
-        bind .output <ButtonRelease-2> {
-            if {!$tkPriv(mouseMoved)} { window.selection_to_input }
-        }
-        bindtags .output {Text .output . all}
+    bind .output <ButtonRelease-2> {
+        if {!$tkPriv(mouseMoved)} { window.selection_to_input }
+    }
+    bindtags .output {Text .output . all}
 
-        .output configure -state disabled
+    .output configure -state disabled
 
-        window.focus .input
+    window.focus .input
 
-        .output tag configure window_margin -lmargin1 0m -lmargin2 3m
-        .output tag configure window_highlight -foreground [colourdb.get red]
+    .output tag configure window_margin -lmargin1 0m -lmargin2 3m
+    .output tag configure window_highlight -foreground [colourdb.get red]
 
-        bind . <FocusIn> {window.cancel_lite}
-        bind . <FocusOut> {window.timeout_lite}
+    bind . <FocusIn> {window.cancel_lite}
+    bind . <FocusOut> {window.timeout_lite}
 
-        bind . <Configure> { window.resize_event }
+    bind . <Configure> { window.resize_event }
 
-
-        wm protocol . WM_DELETE_WINDOW client.exit
+    wm protocol . WM_DELETE_WINDOW client.exit
 
     global window_clip_output_buffer
     set window_clip_output_buffer 0
@@ -3258,17 +3021,16 @@ proc window.buildWindow {} {
 
 proc window.accel str {
     global tcl_platform
-    if { $str == "Ctrl" && $tcl_platform(platform) == "macintosh" } {
-	return "Cmd"
+    if { $str == "Ctrl" && $tcl_platform(os) == "Darwin" } {
+		return "Cmd"
     }
     return $str
 }
 
 proc window.focus win {
     global tcl_platform
-    if { $tcl_platform(platform) == "windows" ||
-	 $tcl_platform(platform) == "macintosh" } {
-	after idle raise [winfo toplevel $win]
+    if { $tcl_platform(platform) == "windows" || $tcl_platform(os) == "Darwin" } {
+    	after idle raise [winfo toplevel $win]
     }
     focus $win
 }
@@ -3324,223 +3086,6 @@ proc window.repack_lite {} {
 }
 
 #
-
-proc window.old.buildWindow {} {
-	global tkmooVersion client_mode client_echo \
-	    window_activity_flash_colour
-
-	wm title    . "tkMOO-light"
-	wm iconname . "tkMOO-light"
-        . configure -bd 0
-
-	frame .menu -bd 0
-
-	menubutton .menu.connections \
-		-text "Connect" \
-		-underline 0 \
-		-menu .menu.connections.menu
-
-	    menu .menu.connections.menu \
-		-tearoff 0
-
-        menubutton .menu.edit \
-            -text "Edit" \
-            -underline 0 \
-            -menu .menu.edit.m
-
-
-            menu .menu.edit.m -tearoff 0
-
-            .menu.edit.m add command \
-                -label "Cut" \
-                -command "ui.delete_selection .input" \
-		-accelerator "[window.accel Ctrl]+X"
-            window.hidemargin .menu.edit.m
-
-            .menu.edit.m add command \
-                -label "Copy" \
-                -command "ui.copy_selection .input" \
-		-accelerator "[window.accel Ctrl]+C"
-            window.hidemargin .menu.edit.m
-
-            .menu.edit.m add command \
-                -label "Paste" \
-                -command "ui.paste_selection .input" \
-		-accelerator "[window.accel Ctrl]+V"
-            window.hidemargin .menu.edit.m
-
-	    .menu.edit.m add separator
-
-	    .menu.edit.m add command \
-		-label "Clear" \
-		-underline 1 \
-		-command "ui.clear_screen .output"
-            window.hidemargin .menu.edit.m
-
-	menubutton .menu.tools \
-	    -text "Tools" \
-	    -underline 0 \
-	    -menu .menu.tools.menu
-
-	menu .menu.tools.menu -tearoff 0
-
-	menubutton .menu.prefs \
-	    -text "Preferences" \
-	    -underline 0 \
-	    -menu .menu.prefs.menu
-	menu .menu.prefs.menu -tearoff 0
-
-            .menu.prefs.menu add cascade -label "Key Bindings" \
-		-menu .menu.prefs.menu.bindings
-            window.hidemargin .menu.prefs.menu
-	    menu .menu.prefs.menu.bindings -tearoff 0
-
-            foreach binding [bindings.bindings] {
-    	        .menu.prefs.menu.bindings add radio \
-		    -variable window_binding \
-		    -value $binding \
-		    -label "$binding" \
-		    -command "window.set_key_bindings_from_menu"
-	    }
-
-            .menu.prefs.menu add cascade \
-	        -label "Default Font" -menu .menu.prefs.menu.fonts
-            window.hidemargin .menu.prefs.menu
-
-                menu .menu.prefs.menu.fonts -tearoff 0
-
-                .menu.prefs.menu.fonts add radio \
-		        -variable window_fonts \
-		        -value fixedwidth \
-		        -label   "fixedwidth" \
-		        -command window.set_default_font_from_menu
-
-	        .menu.prefs.menu.fonts add radio \
-		        -variable window_fonts \
-		        -value proportional \
-		        -label   "proportional" \
-		        -command window.set_default_font_from_menu
-
-            .menu.prefs.menu add cascade -label "Mode" \
-                -menu .menu.prefs.menu.mode
-            window.hidemargin .menu.prefs.menu
-            menu .menu.prefs.menu.mode -tearoff 0
-            
-            foreach mode "line character" {
-                .menu.prefs.menu.mode add radio \
-                    -variable client_mode \
-                    -value $mode \
-                    -label "$mode"
-                    -command "window.set_client_mode_from_menu"
-            }
-
-	    .menu.prefs.menu add cascade -label "Local Echo" \
-		-menu .menu.prefs.menu.local
-            window.hidemargin .menu.prefs.menu
-	    menu .menu.prefs.menu.local -tearoff 0
-	    .menu.prefs.menu.local add radio \
-		-variable client_echo \
-                -command "window.set_local_echo_from_menu" \
-		-value 1 \
-		-label "on"
-	    .menu.prefs.menu.local add radio \
-		-variable client_echo \
-                -command "window.set_local_echo_from_menu" \
-		-value 0 \
-		-label "off"
-
-	    .menu.prefs.menu add cascade \
-		-label "Input Size" -menu .menu.prefs.menu.size
-            window.hidemargin .menu.prefs.menu
-
-		menu .menu.prefs.menu.size -tearoff 0
-		for {set i 1} {$i < 6} {incr i} {
-                    .menu.prefs.menu.size add radio \
-                        -variable window_input_size_display \
-                        -value $i \
-                        -label   "$i" \
-                        -command window.set_input_size_from_menu
-		}
-
-
-	label .menu.label \
-	    -text "tkMOO-light" \
-	    -anchor center \
-	    -foreground [colourdb.get red]
-
-	frame .menu.flash -bd 1 -height 10 -width 6 -relief sunken
-        set window_activity_flash_colour [.menu.flash cget -background]
-
-        menubutton .menu.help \
-            -text "Help" \
-            -underline 0 \
-            -menu .menu.help.menu
-        
-        menu .menu.help.menu -tearoff 0
-
-	window.configure_help_menu
-
-        pack .menu.connections -side left
-        pack .menu.edit -side left
-        pack .menu.tools -side left
-        pack .menu.prefs -side left
-        pack .menu.help -side right
-        pack .menu.flash -side right
-
-        pack .menu.label -side left -fill x -expand true
-
-	frame .canyon -bd 2 -height 2 -relief sunken
-        
-	text .output \
-	    -cursor {} \
-	    -font [fonts.fixedwidth] \
-	    -width 80 \
-	    -height 24 \
-	    -setgrid 1 \
-	    -relief flat \
-	    -bd 0 \
-	    -yscrollcommand ".scrollbar set" \
-	    -highlightthickness 0 \
-	    -wrap word 
-
-        text .input \
-	    -wrap word \
-	    -relief sunken \
-            -height 1 \
-            -highlightthickness 0 \
-            -font [fonts.fixedwidth] \
-            -background [colourdb.get pink]
-
-        history.init .input 1
-
-	scrollbar .scrollbar \
-	    -command ".output yview" \
-	    -highlightthickness 0
-
-        window.set_scrollbar_look .scrollbar
-
-        window.repack
-
-
-	bind .output <ButtonRelease-2> {
-	    if {!$tkPriv(mouseMoved)} { window.selection_to_input }
-	}
-	bindtags .output {Text .output . all}
-
-        .output configure -state disabled
-
-        window.focus .input
-
-	.output tag configure window_margin -lmargin1 0m -lmargin2 3m
-	.output tag configure window_highlight -foreground [colourdb.get red]
-
-        wm protocol . WM_DELETE_WINDOW client.exit
-
-    global window_clip_output_buffer
-    set window_clip_output_buffer 0
-    window.hyperlink.init
-    window.initialise_text_widget .output
-}
 
 set window_unsent_cmd [list 0 ""]
 
@@ -3600,9 +3145,9 @@ proc window.get_statusbar_flag {} {
 proc window.toggle_statusbar_flag {} {
     global window_statusbar_flag
     if { $window_statusbar_flag } {
-	set window_statusbar_flag 0
+    	set window_statusbar_flag 0
     } {
-	set window_statusbar_flag 1
+    	set window_statusbar_flag 1
     }
 }
 
@@ -3613,17 +3158,12 @@ proc window.repack {} {
 }
 
 proc window.really_repack {} {
-    if { ![util.use_native_menus] } {
-        window.old.repack
-        return
-    }
-
     global window_toolbars window_statusbars
 
     set window_current_position [.output yview]
 
     foreach slave [pack slaves .] {
-	pack forget $slave
+    	pack forget $slave
     }
 
     . configure -menu .menu
@@ -3636,7 +3176,6 @@ proc window.really_repack {} {
         foreach statusbar $window_statusbars {
             pack $statusbar -side bottom -fill x -in .
         }
-
     }
 
     pack .input -side bottom -fill x -in .
@@ -3655,29 +3194,6 @@ proc window.really_repack {} {
 
     after idle .output yview moveto [lindex $window_current_position 1]
 }
-proc window.old.repack {} {
-    global window_toolbars window_statusbars
-    foreach slave [pack slaves .] {
-	pack forget $slave
-    }
-
-    if { [window.get_statusbar_flag] == 1 } {
-
-        foreach statusbar $window_statusbars {
-            pack $statusbar -side bottom -fill x -in .
-        }
-
-    }
-
-    pack .input -side bottom -fill x -in .
-    pack .menu -side top -fill x -in .
-    foreach toolbar $window_toolbars {
-        pack $toolbar -side top -fill x -in .
-    }
-    pack .canyon -side top -fill x -in .
-    pack .scrollbar -side right -fill y -in .
-    pack .output -side bottom -fill both -expand on -in .
-}
 
 proc window.input_size {} {
     global window_input_size
@@ -3686,7 +3202,6 @@ proc window.input_size {} {
 
 proc window.input_resize size {
     global window_input_size window_input_size_display
-
 
     if { $size == $window_input_size } {
         return 0
@@ -3987,6 +3502,7 @@ proc window.hyperlink.escape_tcl str {
     regsub -all {\$} $str {\\$} str
     return $str
 }
+
 proc window.hyperlink.activate {} {
     global window_hyperlink_db
     if { $window_hyperlink_db(command) != "" } {
@@ -4439,14 +3955,6 @@ proc io.host_unreachable { host port } {
 #
 #
 
-proc util.use_native_menus {} {
-    global tk_version
-    if { $tk_version < 8.0 } {
-        return 0
-    }
-    return 1
-}
-
 set util_unique_id 0
 
 proc util.unique_id token {
@@ -4598,22 +4106,8 @@ ShortList: On
 World: Diversity University
 Host: moo.du.org
 Port: 8888
-ShortList: On
-
-World: the Cold Dark
-Host: ice.cold.org
-Port: 1138
-ShortList: On
-
-World: TecfaMOO
-Host: tecfamoo.unige.ch
-Port: 7777
-ShortList: On
-
-World: RiverMOO
-Host: rivermoo.com
-Port: 8888
-ShortList: On"
+ShortList: On 
+"
 
 proc worlds.default_tkm {} {
     global worlds_default_tkm
@@ -4622,18 +4116,9 @@ proc worlds.default_tkm {} {
 
 proc worlds.preferred_file {} {
     global tcl_platform env tkmooLibrary
+
     set dirs {}
     switch $tcl_platform(platform) {
-	macintosh { 
-	    set file worlds.tkm
-            if { [info exists env(TKMOO_LIB_DIR)] } {
-                lappend dirs [file join $env(TKMOO_LIB_DIR)]
-            }
-            if { [info exists env(PREF_FOLDER)] } {
-                lappend dirs [file join $env(PREF_FOLDER)]
-            }
-            lappend dirs [file join $tkmooLibrary]
-	}
 	windows { 
 	    set file worlds.tkm
             if { [info exists env(TKMOO_LIB_DIR)] } {
@@ -4646,7 +4131,7 @@ proc worlds.preferred_file {} {
 	}
 	unix -
 	default { 
-	    set file .worlds.tkm
+	    set file worlds.tkm
             if { [info exists env(TKMOO_LIB_DIR)] } {
                 lappend dirs [file join $env(TKMOO_LIB_DIR)]
             }
@@ -4671,21 +4156,16 @@ proc worlds.preferred_file {} {
 proc worlds.file {} {
     global tkmooLibrary tcl_platform env
 
-
     set files {}
 
     switch $tcl_platform(platform) {
-	macintosh {
-            lappend files [file join [pwd] worlds.tkm]
-            lappend files [worlds.preferred_file]
-	}
 	windows {
             lappend files [file join [pwd] worlds.tkm]
             lappend files [worlds.preferred_file]
 	}
 	unix -
 	default {
-            lappend files [file join [pwd] .worlds.tkm]
+            lappend files [file join [pwd] worlds.tkm]
             lappend files [worlds.preferred_file]
 	}
     }
@@ -5134,17 +4614,17 @@ proc worlds.make_default_world {} {
 	worlds.set $world ConnectScript "connect %u %p"
     }
 }
-#
-#
 
 
+## This is the little screwy editor window
+##
 
 client.register edit start
 proc edit.start {} {
     global edit_functions
     set edit_functions [list]
-    window.menu_tools_add "Editor" {edit.SCedit {} {} {} "Editor" "Editor"}
-    window.menu_tools_macintosh_accelerator Editor "Cmd+E"
+    window.menu_tools_add "Editor" {edit.SCedit {} {} {} "Editor" "Editor"} "[window.accel Ctrl]+E"
+    bind . <Command-e> {edit.SCedit {} {} {} "Editor" "Editor"}
     global edit_file_matches
     set edit_file_matches [list]
 }
@@ -5220,7 +4700,6 @@ proc edit.SCedit { pre lines post title icon_title {e ""}} {
     if { $e == "" } {
         set e [edit.create $title $icon_title]
     }
-
 
     if { $pre == "" } {
 	if { $post == "" } {
@@ -5423,13 +4902,9 @@ proc edit.fs_save_as e {
 }
 
 proc edit.create { title icon_title } {
-    if { ![util.use_native_menus] } {
-	return [edit.old.create $title $icon_title]
-    }
     global tkmooLibrary
 
     global edit_toolbars
-
 
     ### something like...
 
@@ -5438,7 +4913,7 @@ proc edit.create { title icon_title } {
     set edit_toolbars($w) {}
 
     toplevel $w
-    window.configure_for_macintosh $w
+    #PLG:TODO window.configure_for_macintosh $w
 
     window.place_nice $w
 
@@ -5450,119 +4925,103 @@ proc edit.create { title icon_title } {
     menu $w.controls -tearoff 0 -relief raised -bd 1
     $w configure -menu $w.controls
 
-    $w.controls add cascade -label "File" -menu $w.controls.file \
-	-underline 0
+    ## add the File menu
+    #
+    $w.controls add cascade -label "File" -menu $w.controls.file -underline 0
+    menu $w.controls.file -tearoff 0
 
-        menu $w.controls.file -tearoff 0
-
-        $w.controls.file add command \
-	    -label "Open..." \
-	    -underline 0 \
-	    -command "edit.fs_open $w"
-	window.menu_macintosh_accelerator $w.controls.file "Open..." "Cmd+O"
+    $w.controls.file add command -label "Open..." -underline 0 -command "edit.fs_open $w"
 	window.hidemargin $w.controls.file
 
-        $w.controls.file add command \
-	    -label "Save" \
-	    -underline 0 \
-	    -command "edit.fs_save $w"
-	window.menu_macintosh_accelerator $w.controls.file "Save" "Cmd+S"
+    $w.controls.file add command -label "Save" -underline 0 -command "edit.fs_save $w" -accelerator "[window.accel Ctrl]+S"
 	window.hidemargin $w.controls.file
 
-        $w.controls.file add command \
-	    -label "Save As..." \
-	    -underline 5 \
-	    -command "edit.fs_save_as $w"
-	window.menu_macintosh_accelerator $w.controls.file "Save As..." "Cmd+A"
+    $w.controls.file add command -label "Save As..." -underline 5 -command "edit.fs_save_as $w"
 	window.hidemargin $w.controls.file
 
-        $w.controls.file add separator
+    $w.controls.file add separator
 	window.hidemargin $w.controls.file
 
-        $w.controls.file add command \
-	    -label "Send" \
-	    -underline 1 \
-	    -command "edit.send $w"
-	window.menu_macintosh_accelerator $w.controls.file "Send" "Cmd+E"
-	window.hidemargin $w.controls.file
+    #PLG $w.controls.file add command -label "Send" -underline 1 -command "edit.send $w" -accelerator "[window.accel Ctrl]+E"
+    # This is bullshit... it gets filled in later, by ....
+    #  - proc macmoose.invoke_verb_editor
+    #  - proc macmoose.do_prop_info
+    #
+    # WARNING!!! the order of the "File" menu here is also directly related to the function above in the
+    # sense that the entry fields are HARDCODED into the functions!
+    #
+    $w.controls.file add command -label "Send" -accelerator "Cmd+D"
+    window.hidemargin $w.controls.file
 
-        $w.controls.file add command \
-	    -label "Send and Close" \
-	    -underline 10 \
-	    -command "edit.send_and_close $w"
-	window.menu_macintosh_accelerator $w.controls.file "Send and Close" "Cmd+L"
-	window.hidemargin $w.controls.file
+    #PLG $w.controls.file add command -label "Send and Close" -underline 10 -command "edit.send_and_close $w" -accelerator "[window.accel Ctrl]+L"
+    $w.controls.file add command -label "Send and Close" -accelerator "Cmd+L"
+    window.hidemargin $w.controls.file
 
-        $w.controls.file add command \
-	    -label "Close" \
-	    -underline 0 \
-	    -command "edit.destroy $w"
-	window.menu_macintosh_accelerator $w.controls.file "Close" "Cmd+Q"
-	window.hidemargin $w.controls.file
+    $w.controls.file add command -label "Close" -underline 0 -command "edit.destroy $w" -accelerator "[window.accel Ctrl]+W"
+	bind $w <Command-w> "edit.destroy $w"
+    window.hidemargin $w.controls.file
 
-    $w.controls add cascade -label "Edit" -menu $w.controls.edit \
-	-underline 0
+    $w.controls add cascade -label "Edit" -menu $w.controls.edit -underline 0
 
-        menu $w.controls.edit -tearoff 0
-        $w.controls.edit add command \
-	    -label "Cut" \
-	    -accelerator "[window.accel Ctrl]+X" \
-	    -command "edit.do_cut $w"
+    menu $w.controls.edit -tearoff 0
+
+    $w.controls.edit add command -label "Cut" -accelerator "[window.accel Ctrl]+X" -command "edit.do_cut $w"
 	window.hidemargin $w.controls.edit
-        $w.controls.edit add command \
-	    -label "Copy" \
-	    -accelerator "[window.accel Ctrl]+C" \
-	    -command "edit.do_copy $w"
+    $w.controls.edit add command -label "Copy" -accelerator "[window.accel Ctrl]+C" -command "edit.do_copy $w"
 	window.hidemargin $w.controls.edit
-        $w.controls.edit add command \
-	    -label "Paste" \
-	    -accelerator "[window.accel Ctrl]+V" \
-	    -command "edit.do_paste $w"
+    $w.controls.edit add command -label "Paste" -accelerator "[window.accel Ctrl]+V" -command "edit.do_paste $w"
 	window.hidemargin $w.controls.edit
 
     global edit_functions
     if { $edit_functions != {} } {
-	$w.controls.edit add separator
-	window.hidemargin $w.controls.edit
-	foreach function $edit_functions {
-	    set title [lindex $function 0]
-	    set callback [lindex $function 1]
-	    $w.controls.edit add command \
-		-label "$title" \
-		-command "$callback $w"
-	    window.hidemargin $w.controls.edit
-	}
+    	$w.controls.edit add separator
+    	window.hidemargin $w.controls.edit
+    	foreach function $edit_functions {
+    	    set title [lindex $function 0]
+    	    set callback [lindex $function 1]
+    	    $w.controls.edit add command -label "$title" -command "$callback $w"
+    	    window.hidemargin $w.controls.edit
+    	}
     }
 
-    $w.controls add cascade -label "View" -menu $w.controls.view \
-	-underline 0
+    ## add the View menu 
+    #
+    $w.controls add cascade -label "View" -menu $w.controls.view -underline 0
+    menu $w.controls.view -tearoff 0
 
-        menu $w.controls.view -tearoff 0
-        $w.controls.view add command \
-	    -label "Find" \
-	    -underline 0 \
-	    -command "edit.find $w"
-	window.hidemargin $w.controls.view
-        $w.controls.view add command \
-	    -label "Goto" \
-	    -underline 0 \
-	    -command "edit.goto $w"
+    $w.controls.view add command -label "Find" -underline 0 -command "edit.find $w" -accelerator "[window.accel Ctrl]+F"
+    #PLG:TODO bind $w <Command-f> 
 	window.hidemargin $w.controls.view
 
-    text $w.t \
-        -font [fonts.fixedwidth] \
-        -height 24 \
-        -width 80 \
-        -yscrollcommand "$w.scrollbar set" \
-	-highlightthickness 0 \
-        -setgrid true
+    $w.controls.view add command -label "Goto" -underline 0 -command "edit.goto $w" -accelerator "[window.accel Ctrl]+G"
+    #PLG:TODO bind $w <Command-g> 
+	window.hidemargin $w.controls.view
 
-    scrollbar $w.scrollbar -command "$w.t yview" \
-	-highlightthickness 0
+    ## add the Window menu
+    #
+    $w.controls add cascade -label "Window" -menu $w.controls.windows -underline 0
+    menu $w.controls.windows -tearoff 0
+
+    $w.controls.windows add separator
+    window.hidemargin $w.controls.windows
+
+    $w.controls.windows add command -label "Root" -underline 0 -command "window.focus .input" -accelerator "[window.accel Ctrl]+0"
+    bind $w <Command-0> "window.focus .input"
+    window.hidemargin $w.controls.windows
+
+    $w.controls.windows add command -label "Object" -underline 0 -command "" -accelerator "[window.accel Ctrl]+O"
+    #PLG:TODO bind $w <Command-O> "window.focus .input"
+    window.hidemargin $w.controls.windows
+
+    ## manipulate the text output called .t
+
+    #PLG window size
+    text $w.t -font [fonts.fixedwidth] -height 35 -width 110 -yscrollcommand "$w.scrollbar set" -highlightthickness 0 -setgrid true
+
+    scrollbar $w.scrollbar -command "$w.t yview" -highlightthickness 0
     window.set_scrollbar_look $w.scrollbar
 
-    label $w.position -bd 2 -relief groove \
-        -text "position: 1.0" -anchor e
+    label $w.position -bd 2 -relief groove -text "position: 1.0" -anchor e
 
     bind $w.t <KeyPress> 	"after idle edit.show_line_number $w"
     bind $w.t <KeyRelease> 	"after idle edit.show_line_number $w"
@@ -5578,10 +5037,6 @@ proc edit.create { title icon_title } {
 
 proc edit.repack editor {
     global edit_toolbars
-
-    if { ![util.use_native_menus] } {
-	return [edit.old.repack $editor]
-    }
 
     set slaves [pack slaves $editor]
 
@@ -5600,149 +5055,8 @@ proc edit.repack editor {
     pack $editor.t -side left -expand 1 -fill both
 }
 
-proc edit.old.repack editor {
-    global edit_toolbars
-
-    set slaves [pack slaves $editor]
-
-    if { $slaves != "" } {
-	eval pack forget $slaves
-    }
-
-    pack $editor.controls -side top -fill x
-
-    foreach toolbar $edit_toolbars($editor) {
-	pack $editor.$toolbar -side top -fill x
-    }
-
-    pack $editor.scrollbar -side right -fill y
-    pack $editor.t -side left -expand 1 -fill both
-}
-
-proc edit.old.create { title icon_title } {
-    global tkmooLibrary
-
-    global edit_toolbars
-
-
-    ### something like...
-
-    set w .[util.unique_id "e"]
-
-    set edit_toolbars($w) {}
-
-    toplevel $w
-
-    window.place_nice $w
-
-    $w configure -bd 0 -highlightthickness 0
-
-    wm title $w $title
-    wm iconname $w $icon_title
-
-    frame $w.controls -bd 0 -highlightthickness 0
-
-    menubutton $w.controls.file \
-	-text "File" \
-	-underline 0 \
-	-menu $w.controls.file.m
-
-        menu $w.controls.file.m -tearoff 0
-
-        $w.controls.file.m add command \
-	    -label "Send" \
-	    -underline 0 \
-	    -command "edit.send $w"
-	window.hidemargin $w.controls.file.m
-
-        $w.controls.file.m add command \
-	    -label "Send and Close" \
-	    -underline 1 \
-	    -command "edit.send_and_close $w"
-	window.hidemargin $w.controls.file.m
-
-        $w.controls.file.m add command \
-	    -label "Close" \
-	    -underline 0 \
-	    -command "edit.destroy $w"
-	window.hidemargin $w.controls.file.m
-
-    menubutton $w.controls.edit \
-	-text "Edit" \
-	-underline 0 \
-	-menu $w.controls.edit.m
-
-        menu $w.controls.edit.m -tearoff 0
-        $w.controls.edit.m add command \
-	    -label "Cut" \
-	    -accelerator "[window.accel Ctrl]+X" \
-	    -command "edit.do_cut $w"
-	window.hidemargin $w.controls.edit.m
-        $w.controls.edit.m add command \
-	    -label "Copy" \
-	    -accelerator "[window.accel Ctrl]+C" \
-	    -command "edit.do_copy $w"
-	window.hidemargin $w.controls.edit.m
-        $w.controls.edit.m add command \
-	    -label "Paste" \
-	    -accelerator "[window.accel Ctrl]+V" \
-	    -command "edit.do_paste $w"
-	window.hidemargin $w.controls.edit.m
-
-    menubutton $w.controls.view \
-	-text "View" \
-	-underline 0 \
-	-menu $w.controls.view.m
-
-        menu $w.controls.view.m -tearoff 0
-        $w.controls.view.m add command \
-	    -label "Find" \
-	    -underline 0 \
-	    -command "edit.find $w"
-	window.hidemargin $w.controls.view.m
-        $w.controls.view.m add command \
-	    -label "Goto" \
-	    -underline 0 \
-	    -command "edit.goto $w"
-	window.hidemargin $w.controls.view.m
-
-    label $w.controls.line -text "position: 1.0"
-
-    pack $w.controls.file -side left
-    pack $w.controls.edit -side left
-    pack $w.controls.view -side left
-    pack $w.controls.line -side right
-
-    text $w.t \
-        -font [fonts.fixedwidth] \
-        -height 24 \
-        -width 80 \
-        -yscrollcommand "$w.scrollbar set" \
-	-highlightthickness 0 \
-        -setgrid true
-
-    scrollbar $w.scrollbar -command "$w.t yview" \
-	-highlightthickness 0
-    window.set_scrollbar_look $w.scrollbar
-
-    bind $w.t <KeyPress> 	"after idle edit.show_line_number $w"
-    bind $w.t <KeyRelease> 	"after idle edit.show_line_number $w"
-    bind $w.t <ButtonPress> 	"after idle edit.show_line_number $w"
-    bind $w.t <ButtonRelease> 	"after idle edit.show_line_number $w"
-
-    bind $w.t <Control-v>	"edit.do_paste $w; break"
-
-    edit.repack $w
-
-    return $w
-}
-
 proc edit.show_line_number w {
     if { [winfo exists $w] == 0 } { return }
-    if { ![util.use_native_menus] } {
-	edit.old.show_line_number $w
-	return
-    }
     set line_number [$w.t index insert]
     $w.position configure -text "position: $line_number"
 }
@@ -5784,47 +5098,19 @@ proc edit.send_and_close w {
     edit.destroy $w
 }
 
-
 proc edit.configure_send { e label command {underline 0} } {
-    if { ![util.use_native_menus] } {
-	edit.old.configure_send $e $label $command $underline
-	return
-    }
-    $e.controls.file entryconfigure 4 \
-	-label $label -command $command -underline $underline
+    $e.controls.file entryconfigure "Send" -label $label -command $command -underline $underline
+    bind $e <Command-d> $command
 }
 
 proc edit.configure_send_and_close { e label command {underline 0} } {
-    if { ![util.use_native_menus] } {
-	edit.old.configure_send_and_close $e $label $command $underline
-	return
-    }
-    $e.controls.file entryconfigure 5 \
-	-label $label -command $command -underline $underline
+    $e.controls.file entryconfigure "Send and Close" -label $label -command $command -underline $underline
+    bind $e <Command-l> $command
 }
 
 proc edit.configure_close { e label command {underline 0} } {
-    if { ![util.use_native_menus] } {
-	edit.old.configure_close $e $label $command $underline
-	return
-    }
-    $e.controls.file entryconfigure 6 \
-	-label $label -command $command -underline $underline
-}
-
-proc edit.old.configure_send { e label command {underline 0} } {
-    $e.controls.file.m entryconfigure 4 \
-	-label $label -command $command -underline $underline
-}
-
-proc edit.old.configure_send_and_close { e label command {underline 0} } {
-    $e.controls.file.m entryconfigure 5 \
-	-label $label -command $command -underline $underline
-}
-
-proc edit.old.configure_close { e label command {underline 0} } {
-    $e.controls.file.m entryconfigure 6 \
-	-label $label -command $command -underline $underline
+    $e.controls.file entryconfigure "Close" -label $label -command $command -underline $underline
+    bind $e <Command-w> $command
 }
 
 ###
@@ -6079,8 +5365,7 @@ proc ui.page_end win {
 proc ui.paste_selection win { 
     tk_textPaste $win 
     global tcl_platform
-    if { $tcl_platform(platform) == "macintosh" &&
-         "$win" == ".input" } {
+    if { $tcl_platform(platform) == "macintosh" && "$win" == ".input" } {
         focus .input
     }
 }
@@ -6989,12 +6274,6 @@ client.register mcp client_connected
 client.register mcp incoming
 
 
-
-#
-#
-#
-#
-#
 #
 #
 
@@ -7373,16 +6652,15 @@ proc desktop.create { title object type } {
     set canvas $dt.frame.canvas
 
     canvas $canvas \
-	-background [option get . desktopBackground DesktopBackground] \
-	-relief flat \
+    	-background [option get . desktopBackground DesktopBackground] \
+    	-relief flat \
         -bd 0 -highlightthickness 0 \
-	-scrollregion { 0 0 500 800 } \
-	-width 500 -height 300 \
-	-yscrollcommand "$dt.frame.vscroll set" \
-	-xscrollcommand "$dt.frame.bottom.hscroll set" 
+    	-scrollregion { 0 0 500 800 } \
+    	-width 500 -height 300 \
+    	-yscrollcommand "$dt.frame.vscroll set" \
+    	-xscrollcommand "$dt.frame.bottom.hscroll set" 
 
-    scrollbar $dt.frame.vscroll -command "$canvas yview" \
-	-highlightthickness 0
+    scrollbar $dt.frame.vscroll -command "$canvas yview" -highlightthickness 0
     window.set_scrollbar_look $dt.frame.vscroll
 
     frame $dt.frame.bottom \
@@ -7853,6 +7131,7 @@ proc desktop.get_callback { item event } {
     }
     return $callback
 }
+
 #
 #
 
@@ -7882,10 +7161,10 @@ proc xmcp11.do_callback_desktop* {} {
         $location $lines]
     desktop.set_handler $desktop xmcp11
 }
+
 #
 #
 
-###
 proc mcp.do_desktop-remove {} {
         if { [mcp.authenticated] == 1 } {
         	desktop.SCremove [request.get current object]
@@ -8131,8 +7410,8 @@ proc whiteboard.SCgallery { object lines } {
     }
 }
 
-###
-###
+#
+#
 
 proc whiteboard.id_to_item id {
     global whiteboard_id
@@ -8576,8 +7855,8 @@ proc whiteboard.destroy { dt win } {
 }
 
 
-###
-###
+#
+#
 
 proc whiteboard.pen-down { dt x y } {
     global whiteboard_x1 whiteboard_y1 \
@@ -8607,7 +7886,8 @@ proc whiteboard.pen-down { dt x y } {
     }
 }
 
-###
+#
+
 proc whiteboard.bounds_check { a maxa margin } {
     return $a
 
@@ -9855,6 +9135,7 @@ proc mail.in_cache { folder msgno } {
 
 #
 #
+
 proc xmcp11.do_xmail-folders* {} {
     if { [xmcp11.authenticated] == 1 } {
         request.set current xmcp11_multiline_procedure "xmail-folders*"
@@ -10192,6 +9473,7 @@ proc xmcp11.do_chess-board {} {
     set sequence	[request.get $which sequence]
     chess.SCboard $object $board $turn $colour $sequence
 }
+
 #
 #
 
@@ -10199,21 +9481,14 @@ client.register macmoose start
 client.register macmoose client_connected
 client.register macmoose incoming
 
-
-
-
-
-
-
-
 proc macmoose.start {} {
     global macmoose_use macmoose_log
     .output tag configure macmoose_feedback -foreground [colourdb.get darkgreen]
     .output tag configure macmoose_error -foreground [colourdb.get red]
     set macmoose_use 1
     set macmoose_log 0
-    window.menu_tools_add "MacMOOSE" macmoose.create_browser
-    window.menu_tools_macintosh_accelerator "MacMOOSE" "Cmd+M"
+    window.menu_tools_add "MacMOOSE" macmoose.create_browser "[window.accel Ctrl]+M"
+    bind . <Command-m> macmoose.create_browser
 
     preferences.register macmoose {Out of Band} {
         { {directive MacMOOSELogging}
@@ -10336,9 +9611,6 @@ proc macmoose.do_list_code data {
 }
 
 proc macmoose.invoke_verb_editor {} {
-    if { ![util.use_native_menus] } {
-        return [macmoose.old.invoke_verb_editor]
-    }
     global macmoose_editordb macmoose_keyvals macmoose_lines macmoose_fake_args
     set e [edit.create "Verb Editor" "Verb Editor"]
     edit.set_type $e moo-code
@@ -10390,67 +9662,7 @@ proc macmoose.invoke_verb_editor {} {
     edit.repack $e
 }
 
-proc macmoose.old.invoke_verb_editor {} {
-    global macmoose_editordb macmoose_keyvals macmoose_lines macmoose_fake_args
-
-    set e [edit.create "Verb Editor" "Verb Editor"]
-    edit.set_type $e moo-code
-    edit.SCedit "" $macmoose_lines "" "Verb Editor" "Verb Editor" $e
-    edit.configure_send  $e Send  "macmoose.editor_verb_send $e" 1
-    edit.configure_send_and_close  $e "Send and Close"  "macmoose.editor_verb_send_and_close $e" 10
-    edit.configure_close $e Close "macmoose.editor_close $e" 0
-
-
-    foreach key [array names macmoose_keyvals] {
-	set macmoose_editordb($e:$key) $macmoose_keyvals($key)
-    }
-    foreach key [array names macmoose_fake_args] {
-	set macmoose_editordb($e:$key) $macmoose_fake_args($key)
-    }
-
-    edit.add_toolbar $e info
-
-    frame $e.info -bd 0 -highlightthickness 0
-
-    window.toolbar_look $e.info
-
-	set msg ""
-	set msg "$msg$macmoose_editordb($e:OBJ_)"
-	set msg "$msg:"
-	set msg "$msg$macmoose_editordb($e:CODE_NAME_)"
-
-        label $e.info.l1 -text "$msg"
-
-	label $e.info.la -text " args:"
-	entry $e.info.args -width 15 \
-	    -background [colourdb.get pink] \
-	    -font [fonts.fixedwidth]
-	    $e.info.args insert 0 "$macmoose_editordb($e:VERB_DOBJ_) $macmoose_editordb($e:VERB_PREP_) $macmoose_editordb($e:VERB_IOBJ_)"
-	label $e.info.lp -text " perms:"
-	entry $e.info.perms -width 4 \
-	    -background [colourdb.get pink] \
-	    -font [fonts.fixedwidth]
-	    $e.info.perms insert 0 $macmoose_editordb($e:VERB_PERMS_)
-
-	label $e.info.lo -text " owner: $macmoose_editordb($e:VERB_OWNER_)"
-
-	pack $e.info.l1 -side left
-	pack $e.info.la -side left
-	pack $e.info.args -side left
-	pack $e.info.lp -side left
-	pack $e.info.perms -side left
-	pack $e.info.lo -side left
-
-    edit.repack $e
-}
-
-
 proc macmoose.do_prop_info data {
-
-    if { ![util.use_native_menus] } {
-        return [macmoose.old.do_prop_info $data]
-    }
-
     macmoose.populate_array info $data
 
     set error ""
@@ -10498,62 +9710,6 @@ proc macmoose.do_prop_info data {
 	pack $e.info.lo -side left
 
     edit.repack $e
-
-    return [modules.module_ok]
-}
-
-proc macmoose.old.do_prop_info data {
-
-    macmoose.populate_array info $data
-
-    set error ""
-    catch { set error $info(ERROR_) }
-    if { $error != "" } {
-        window.displayCR "$info(OBJ_NAME_) ($info(OBJ_)).$info(PROP_NAME_) $error" macmoose_error
-	return [modules.module_ok]
-    }
-
-    global macmoose_editordb 
-
-    set e [edit.SCedit "" "" "" "Property Editor" "Property Editor"]
-
-    $e.t insert insert "$info(PROP_VALUE_)"
-    edit.configure_send  $e Send  "macmoose.editor_property_send $e" 1
-    edit.configure_send_and_close  $e "Send and Close"  "macmoose.editor_property_send_and_close $e" 10
-    edit.configure_close $e Close "macmoose.editor_close $e" 0
-    foreach key [array names info] {
-	set macmoose_editordb($e:$key) $info($key)
-    }
-
-    frame $e.info -bd 0 -highlightthickness 0
-
-    window.toolbar_look $e.info
-
-	set msg ""
-	set msg "$msg$macmoose_editordb($e:OBJ_)"
-	set msg "$msg."
-	set msg "$msg$macmoose_editordb($e:PROP_NAME_)"
-        label $e.info.l -text "$msg"
-
-        label $e.info.lp -text " perms:"
-        entry $e.info.perms -width 4 \
-	    -background [colourdb.get pink] \
-	    -font [fonts.fixedwidth]
-	$e.info.perms insert 0 "$macmoose_editordb($e:PROP_PERMS_)"
-
-        label $e.info.lo -text " owner: $macmoose_editordb($e:PROP_OWNER_)"
-
-	pack $e.info.l -side left
-	pack $e.info.lp -side left
-	pack $e.info.perms -side left
-	pack $e.info.lo -side left
-
-    set slaves [pack slaves $e]
-    pack forget $slaves 
-    pack $e.controls -side top -fill x
-    pack $e.info -side top -fill x
-    pack $e.scrollbar -side right -fill y
-    pack $e.t -side left
 
     return [modules.module_ok]
 }
@@ -10710,20 +9866,17 @@ proc macmoose.invoke_browser {} {
         set browser [macmoose.create_browser]
     }
 
-        $browser.lists.v.verbs.l delete 0 end
-        foreach verb [lsort [split $macmoose_keyvals(VERBS_) "/"]] {
-	    if { $verb == "" } { continue }
-	    $browser.lists.v.verbs.l insert end $verb
-        }
+    $browser.lists.v.verbs.l delete 0 end
+    foreach verb [lsort [split $macmoose_keyvals(VERBS_) "/"]] {
+    if { $verb == "" } { continue }
+    $browser.lists.v.verbs.l insert end $verb
+    }
 
-        $browser.lists.p.props.l delete 0 end
-        foreach prop [lsort [split $macmoose_keyvals(PROPS_) "/"]] {
-	    if { $prop == "" } { continue }
-	    $browser.lists.p.props.l insert end $prop
-        }
-
-
-
+    $browser.lists.p.props.l delete 0 end
+    foreach prop [lsort [split $macmoose_keyvals(PROPS_) "/"]] {
+    if { $prop == "" } { continue }
+    $browser.lists.p.props.l insert end $prop
+    }
 
     wm title $browser "Browser on $macmoose_keyvals(OBJ_NAME_)"
 
@@ -10762,18 +9915,6 @@ proc macmoose.object_parents { browser object } {
     set special "_BROWSER_=$browser"
     set line "$line PREFIX_: _&_MacMOOSE_object_parents($special)"
     io.outgoing $line
-}
-
-proc macmoose.old.post_object_menu browser {
-    $browser.controls.top.o.m delete 0 end
-    set object_menu [db.get $browser object_menu]
-    foreach object_name $object_menu {
-	set object [lindex $object_name 0]
-	set name [lindex $object_name 1]
-        $browser.controls.top.o.m add command \
-	    -label "$name ($object)" \
-	    -command "macmoose.object_info $browser $object"
-    }
 }
 
 proc macmoose.list_code { browser code_name } {
@@ -10892,10 +10033,6 @@ proc macmoose.add_dialog w {
 }
 
 
-
-
-
-
 proc macmoose.add_script_or_property browser {
     global macmoose_add
     set macmoose_add script
@@ -10918,31 +10055,19 @@ proc macmoose.add_script_or_property browser {
     label $w.l -text "add a script or property"
 
     frame $w.s -bd 0 -highlightthickness 0
-	radiobutton $w.s.r -text "script" \
-	    -anchor w \
-	    -variable macmoose_add -value script \
-	    -width 10
+	radiobutton $w.s.r -text "script" -anchor w -variable macmoose_add -value script -width 10
 	label $w.s.lname -text "name:"
-	entry $w.s.name \
-            -width 15 \
-            -background [colourdb.get pink] \
-            -font [fonts.fixedwidth]
+	entry $w.s.name -width 15 -background [colourdb.get pink] -font [fonts.fixedwidth]
 
 	label $w.s.lperms -text "perms:"
-	entry $w.s.perms \
-            -width 4 \
-            -background [colourdb.get pink] \
-            -font [fonts.fixedwidth]
+	entry $w.s.perms -width 4 -background [colourdb.get pink] -font [fonts.fixedwidth]
 
-	    $w.s.perms insert 0 "rd"
+    $w.s.perms insert 0 "rd"
 
 	label $w.s.largs -text "args:"
-	entry $w.s.args \
-            -width 15 \
-            -background [colourdb.get pink] \
-            -font [fonts.fixedwidth]
+	entry $w.s.args -width 15 -background [colourdb.get pink] -font [fonts.fixedwidth]
 
-	    $w.s.args insert 0 "none none none"
+    $w.s.args insert 0 "none none none"
 
 	pack $w.s.r -side left
 	pack $w.s.lname -side left
@@ -10987,13 +10112,12 @@ proc macmoose.add_script_or_property browser {
     button $w.controls.c -text "Close" -command "destroy $w; db.drop $w"
 
     global tcl_platform
-    if { $tcl_platform(platform) != "macintosh" } {
-        bind $w <Escape> "destroy $w; db.drop $w"
+    if { $tcl_platform(os) == "Darwin" } {
+        bind $w <Command-w> "destroy $w; db.drop $w"
     }
-
-
-    pack $w.controls.a $w.controls.c -side left \
-	-padx 5 -pady 5
+    bind $w <Escape> "destroy $w; db.drop $w"
+    
+    pack $w.controls.a $w.controls.c -side left -padx 5 -pady 5
     pack $w.controls -side bottom 
     window.focus $w
 }
@@ -11003,10 +10127,6 @@ proc macmoose.toplevel w {
 }
 
 proc macmoose.post_object_menu browser {
-    if { ![util.use_native_menus] } {
-	macmoose.old.post_object_menu $browser
-	return
-    }
     $browser.cmenu.object delete 0 end
     set object_menu [db.get $browser object_menu]
     if { $object_menu != {} } {
@@ -11019,17 +10139,9 @@ proc macmoose.post_object_menu browser {
 	    window.hidemargin $browser.cmenu.object
         }
     } {
-        $browser.cmenu.object add command \
-            -label "No object selected" \
-	    -state disabled
-	window.hidemargin $browser.cmenu.object
+        $browser.cmenu.object add command -label "No object selected" -state disabled
+    	window.hidemargin $browser.cmenu.object
     }
-    $browser.cmenu.object add separator
-    $browser.cmenu.object add command -label "Close" \
-	-underline 0 \
-        -command "macmoose.destroy_browser $browser"
-    window.menu_macintosh_accelerator $browser.cmenu.object "Close" "Cmd+Q"
-    window.hidemargin $browser.cmenu.object
 }
 
 proc macmoose.destroy_browser browser {
@@ -11037,18 +10149,25 @@ proc macmoose.destroy_browser browser {
     db.drop $browser
 }
 
-proc macmoose.create_browser {} {
-    if { ![util.use_native_menus] } {
-        return [macmoose.old.create_browser]
-    }
-
-    set browser .[util.unique_id "macmoose_browser"]
+proc macmoose.create_browser { { src . } } {
+    set browser .[util.unique_id "macmoose_browser_"]
 
     catch { destroy $browser; db.drop $browser }
     toplevel $browser
-    window.configure_for_macintosh $browser
 
-    window.place_nice $browser
+    #PLG:TODO window.configure_for_macintosh $browser
+
+    # Instead of window.place_nice $browser .
+    #
+    # get the root window's x and y
+    set x [winfo x $src]
+    set y [winfo y $src]
+    set w [winfo width $src]
+
+    incr x $w
+
+    wm geometry $browser "=400x700+$x+$y"
+    #
 
     menu $browser.cmenu
 
@@ -11060,76 +10179,106 @@ proc macmoose.create_browser {} {
     db.set $browser current_object ""
     db.set $browser object_menu {}
 
-    $browser.cmenu add cascade -label "Object" -menu $browser.cmenu.object \
-	-underline 0
+    ## add the File menu
+    #
+    $browser.cmenu add cascade -label "File" -menu $browser.cmenu.file -underline 0
+    menu $browser.cmenu.file -tearoff 0
 
+    $browser.cmenu.file add command -label "New Browser" -underline 0 \
+        -command macmoose.create_browser \
+        -accelerator "[window.accel Ctrl]+N"
+    bind $browser <Command-n> "macmoose.create_browser $browser"
+    window.hidemargin $browser.cmenu.file
+
+    $browser.cmenu.file add command -label "MacMOOSE" -underline 0 \
+        -command macmoose.create_browser \
+        -accelerator "[window.accel Ctrl]+M"
+    bind $browser <Command-m> "macmoose.create_browser $browser"
+    window.hidemargin $browser.cmenu.file
+
+    $browser.cmenu.file add separator
+    $browser.cmenu.file add command -label "Close" -underline 0 \
+        -command "macmoose.destroy_browser $browser" \
+        -accelerator "[window.accel Ctrl]+W"
+    bind $browser <Command-w> "macmoose.destroy_browser $browser"
+    window.hidemargin $browser.cmenu.file
+
+    ## add Object menu
+    #
+    $browser.cmenu add cascade -label "Object" -menu $browser.cmenu.object -underline 0
     menu $browser.cmenu.object -tearoff 0
 
-    $browser.cmenu add cascade -label "Tools" -menu $browser.cmenu.tools \
-	-underline 0
+    ## add Tools menu
+    #
+    $browser.cmenu add cascade -label "Tools" -menu $browser.cmenu.tools -underline 0
     menu $browser.cmenu.tools -tearoff 0
-    $browser.cmenu.tools add command -label "Add Script/Property" \
-	-underline 0 \
-	-command "macmoose.add_script_or_property $browser"
-    window.menu_macintosh_accelerator $browser.cmenu.tools "Add Script/Property" "Cmd+A"
+
+    $browser.cmenu.tools add command -label "Add Script/Property" -underline 0 \
+        -command "macmoose.add_script_or_property $browser" \
+        -accelerator "[window.accel Ctrl]+A"
+    bind $browser <Command-a> "macmoose.add_script_or_property $browser"
     window.hidemargin $browser.cmenu.tools
-    $browser.cmenu.tools add command -label "New Browser" \
-	-underline 0 \
-	-command macmoose.create_browser
-    window.menu_macintosh_accelerator $browser.cmenu.tools "New Browser" "Cmd+N"
-    window.hidemargin $browser.cmenu.tools
+
+
+    ## add the Window menu
+    #
+    $browser.cmenu add cascade -label "Window" -menu $browser.cmenu.windows -underline 0
+    menu $browser.cmenu.windows -tearoff 0
+
+    $browser.cmenu.windows add separator
+    window.hidemargin $browser.cmenu.windows
+
+    #$browser.cmenu.windows add command -label "Root" -underline 0 -command "window.focus .input" -accelerator "[window.accel Ctrl]+0"
+    #PLG:TODO bind $w <Command-0> ""
+    #window.hidemargin $browser.cmenu.windows
+
+    ##
 
     frame $browser.toolbar
     window.toolbar_look $browser.toolbar
 
 	label $browser.toolbar.l -text "Browse:" -width 7 -anchor e
-	entry $browser.toolbar.e \
-            -font [fonts.fixedwidth] \
-            -background [colourdb.get pink]
+	entry $browser.toolbar.e -font [fonts.fixedwidth] -background [colourdb.get pink]
 
-        bind $browser.toolbar.e <Return> {
-            set object [%W get]
-            if { $object != "" } {
-                macmoose.object_parents [macmoose.toplevel %W] $object
-            }
-            %W delete 0 end
+    bind $browser <Activate> "focus $browser.toolbar.e"
+
+    bind $browser.toolbar.e <Return> {
+        set object [%W get]
+        if { $object != "" } {
+            macmoose.object_parents [macmoose.toplevel %W] $object
         }
+        %W delete 0 end
+    }
 
     pack $browser.toolbar.l -side left
     pack $browser.toolbar.e -side left
 
-    pack $browser.toolbar -side top \
-        -fill x
+    pack $browser.toolbar -side top -fill x
 
     frame $browser.lists -bd 0 -highlightthickness 0
 
     frame $browser.lists.v -bd 0 -highlightthickness 0
 	label $browser.lists.v.l -text "Scripts / Verbs"
 
-        frame $browser.lists.v.verbs -bd 0 -highlightthickness 0
-	    listbox $browser.lists.v.verbs.l \
-		-highlightthickness 0 \
-		-background #ffffff \
-		-yscrollcommand "$browser.lists.v.verbs.s set"
+    frame $browser.lists.v.verbs -bd 0 -highlightthickness 0
+    listbox $browser.lists.v.verbs.l -highlightthickness 0 -background #ffffff -yscrollcommand "$browser.lists.v.verbs.s set"
 
-		bind $browser.lists.v.verbs.l <Double-ButtonRelease-1> {
-		    macmoose.list_code [macmoose.toplevel %W] [%W get @%x,%y]
-		}
+	bind $browser.lists.v.verbs.l <Double-ButtonRelease-1> {
+	    macmoose.list_code [macmoose.toplevel %W] [%W get @%x,%y]
+	}
 
-		bind $browser.lists.v.verbs.l <Triple-ButtonRelease-1> {
-		}
+	bind $browser.lists.v.verbs.l <Triple-ButtonRelease-1> {
+	}
 
-	    scrollbar $browser.lists.v.verbs.s \
-		-highlightthickness 0 \
-		-command "$browser.lists.v.verbs.l yview"
+    scrollbar $browser.lists.v.verbs.s -highlightthickness 0 -command "$browser.lists.v.verbs.l yview"
 
-	    global tcl_platform
-	    if { $tcl_platform(platform) != "macintosh" } {
-            window.set_scrollbar_look $browser.lists.v.verbs.s
-	    }
+    global tcl_platform
+    if { $tcl_platform(platform) != "macintosh" } {
+        window.set_scrollbar_look $browser.lists.v.verbs.s
+    }
 
-	    pack $browser.lists.v.verbs.l -side left -fill both -expand 1
-	    pack $browser.lists.v.verbs.s -side right -fill y
+    pack $browser.lists.v.verbs.l -side left -fill both -expand 1
+    pack $browser.lists.v.verbs.s -side right -fill y
 
 	pack $browser.lists.v.l -side top
 	pack $browser.lists.v.verbs -side bottom -fill both -expand 1
@@ -11138,28 +10287,24 @@ proc macmoose.create_browser {} {
     frame $browser.lists.p -bd 0 -highlightthickness 0
 	label $browser.lists.p.l -text "Properties"
 
-        frame $browser.lists.p.props -bd 0 -highlightthickness 0
-	    listbox $browser.lists.p.props.l \
-		-highlightthickness 0 \
-		-background #ffffff \
-		-yscrollcommand "$browser.lists.p.props.s set"
-		bind $browser.lists.p.props.l <Double-ButtonRelease-1> {
-		    macmoose.prop_info [macmoose.toplevel %W] [%W get @%x,%y]
-		}
+    frame $browser.lists.p.props -bd 0 -highlightthickness 0
+    listbox $browser.lists.p.props.l -highlightthickness 0 -background #ffffff -yscrollcommand "$browser.lists.p.props.s set"
+	
+    bind $browser.lists.p.props.l <Double-ButtonRelease-1> {
+	    macmoose.prop_info [macmoose.toplevel %W] [%W get @%x,%y]
+	}
 
-		bind $browser.lists.p.props.l <Triple-ButtonRelease-1> {
-		}
-	    scrollbar $browser.lists.p.props.s \
-		-highlightthickness 0 \
-		-command "$browser.lists.p.props.l yview"
+	bind $browser.lists.p.props.l <Triple-ButtonRelease-1> {
+	}
+    scrollbar $browser.lists.p.props.s -highlightthickness 0 -command "$browser.lists.p.props.l yview"
 
-	    global tcl_platform
-	    if { $tcl_platform(platform) != "macintosh" } {
-            window.set_scrollbar_look $browser.lists.p.props.s
-	    }
+    global tcl_platform
+    if { $tcl_platform(platform) != "macintosh" } {
+        window.set_scrollbar_look $browser.lists.p.props.s
+    }
 
-	    pack $browser.lists.p.props.l -side left -fill both -expand 1
-	    pack $browser.lists.p.props.s -side right -fill y
+    pack $browser.lists.p.props.l -side left -fill both -expand 1
+    pack $browser.lists.p.props.s -side right -fill y
 
 	pack $browser.lists.p.l -side top
 	pack $browser.lists.p.props -side bottom -fill both -expand 1
@@ -11172,141 +10317,6 @@ proc macmoose.create_browser {} {
     macmoose.post_object_menu $browser
 
     window.focus $browser.toolbar.e
-    return $browser
-}
-
-
-proc macmoose.old.create_browser {} {
-    set browser .[util.unique_id "macmoose_browser"]
-
-    catch { destroy $browser; db.drop $browser }
-    toplevel $browser
-    window.configure_for_macintosh $browser
-
-    window.place_nice $browser
-
-    $browser configure -bd 0
-
-    wm iconname $browser "Macmoose"
-    wm title $browser "Macmoose"
-
-    db.set $browser current_object ""
-    db.set $browser object_menu {}
-
-    frame $browser.controls -bd 0 -highlightthickness 0
-	frame $browser.controls.top -bd 0 -highlightthickness 0
-	label $browser.controls.top.l -text "Object:" -width 7 -anchor e
-	menubutton $browser.controls.top.o -text "some object (#???)" \
-	    -menu $browser.controls.top.o.m -relief raised -indicatoron 1
-
-	    menu $browser.controls.top.o.m \
-                -tearoff 0
-
-	menubutton $browser.controls.top.b -text "Tools" \
-	    -relief raised \
-	    -menu $browser.controls.top.b.m
-	menu $browser.controls.top.b.m -tearoff 0
-	    $browser.controls.top.b.m add command -label "Add Script/Property" \
-		-command "macmoose.add_script_or_property $browser"
-	    $browser.controls.top.b.m add command -label "New Browser" \
-		-command macmoose.create_browser
-
-	frame $browser.controls.bottom -bd 0 -highlightthickness 0
-	label $browser.controls.bottom.l2 -text "Browse:" -width 7 -anchor e
-	entry $browser.controls.bottom.e \
-	    -font [fonts.fixedwidth] \
-	    -background [colourdb.get pink]
-	bind $browser.controls.bottom.e <Return> {
-	    set object [%W get]
-	    if { $object != "" } {
-                macmoose.object_parents [macmoose.toplevel %W] $object
-	    }
-	    %W delete 0 end
-	}
-	pack $browser.controls.top.l -side left
-	pack $browser.controls.top.o -side left
-	pack $browser.controls.top.b -side right
-
-	pack $browser.controls.bottom.l2 -side left
-	pack $browser.controls.bottom.e -side left
-
-        pack $browser.controls.top -side top \
-	    -expand 1 -fill x
-        pack $browser.controls.bottom -side top \
-	    -expand 1 -fill x
-
-    frame $browser.lists -bd 0 -highlightthickness 0
-
-    frame $browser.lists.v -bd 0 -highlightthickness 0
-	label $browser.lists.v.l -text "Scripts / Verbs"
-
-        frame $browser.lists.v.verbs -bd 0 -highlightthickness 0
-	    listbox $browser.lists.v.verbs.l \
-		-highlightthickness 0 \
-		-background #ffffff \
-		-yscrollcommand "$browser.lists.v.verbs.s set"
-
-		bind $browser.lists.v.verbs.l <Double-ButtonRelease-1> {
-		    macmoose.list_code [macmoose.toplevel %W] [%W get @%x,%y]
-		}
-
-		bind $browser.lists.v.verbs.l <Triple-ButtonRelease-1> {
-		}
-
-	    scrollbar $browser.lists.v.verbs.s \
-		-highlightthickness 0 \
-		-command "$browser.lists.v.verbs.l yview"
-
-	    global tcl_platform
-	    if { $tcl_platform(platform) != "macintosh" } {
-            window.set_scrollbar_look $browser.lists.v.verbs.s
-	    }
-
-	    pack $browser.lists.v.verbs.l -side left -fill both -expand 1
-	    pack $browser.lists.v.verbs.s -side right -fill y
-
-	pack $browser.lists.v.l -side top
-	pack $browser.lists.v.verbs -side bottom -fill both -expand 1
-
-
-    frame $browser.lists.p -bd 0 -highlightthickness 0
-	label $browser.lists.p.l -text "Properties"
-
-        frame $browser.lists.p.props -bd 0 -highlightthickness 0
-	    listbox $browser.lists.p.props.l \
-		-highlightthickness 0 \
-		-background #ffffff \
-		-yscrollcommand "$browser.lists.p.props.s set"
-		bind $browser.lists.p.props.l <Double-ButtonRelease-1> {
-		    macmoose.prop_info [macmoose.toplevel %W] [%W get @%x,%y]
-		}
-
-		bind $browser.lists.p.props.l <Triple-ButtonRelease-1> {
-		}
-	    scrollbar $browser.lists.p.props.s \
-		-highlightthickness 0 \
-		-command "$browser.lists.p.props.l yview"
-
-	    global tcl_platform
-	    if { $tcl_platform(platform) != "macintosh" } {
-            window.set_scrollbar_look $browser.lists.p.props.s
-	    }
-
-	    pack $browser.lists.p.props.l -side left -fill both -expand 1
-	    pack $browser.lists.p.props.s -side right -fill y
-
-	pack $browser.lists.p.l -side top
-	pack $browser.lists.p.props -side bottom -fill both -expand 1
-
-    pack $browser.lists.v -side left -fill both -expand 1
-    pack $browser.lists.p -side right -fill both -expand 1
-
-    pack $browser.controls -side top -fill x
-    pack $browser.lists -side bottom -fill both -expand 1
-
-    macmoose.post_object_menu $browser
-
-    window.focus $browser.controls.bottom.e
     return $browser
 }
 
@@ -11375,9 +10385,7 @@ client.register edittriggers client_connected
 client.register edittriggers incoming
 client.register edittriggers outgoing
 
-window.menu_tools_add "Edit Triggers" edittriggers.edit
-window.menu_tools_macintosh_accelerator "Edit Triggers" "Cmd+T"
-
+window.menu_tools_add "Edit Triggers" edittriggers.edit ""
 
 
 set edittriggers_default_triggers {## An example triggers.tkm file.  Comment lines begin with the '#'
@@ -12391,9 +11399,10 @@ set edittriggers_api {
 	lappend macro_data_x [list $world $type $regexp $command $continue $nocase $priority $directive]
     }
 }
+
 #
 #
-window.menu_tools_add "@paste selection" {window.paste_selection}
+# window.menu_tools_add "@paste selection" {window.paste_selection} ""
 #
 #
 
@@ -12748,11 +11757,9 @@ proc who.compare_room_idle { this that } {
 	return -1;
     };
 }
+
 #
 #
-
-
-
 
 proc window.open_list {} {
     set o .open_list
@@ -13754,8 +12761,12 @@ preferences.register window {General Settings} {
 	  {display "Disconnection script"} }
 }
 
-if { $tcl_platform(platform) == "macintosh" } {
-    set default_binding "macintosh"
+if { $tcl_platform(platform) == "unix" } {
+	if { $tcl_platform(os) == "Darwin" } {
+    	set default_binding "mac"
+	} {
+		set default_binding "emacs"
+	}
 } {
     set default_binding "windows"
 }

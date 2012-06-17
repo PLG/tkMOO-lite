@@ -20,7 +20,7 @@ WISH = /usr/bin/wish
 
 # ---------------- NO NEED TO CHANGE ANYTHING BELOW THIS LINE ---------------
 
-EXECUTABLE = tkMOO-lite
+EXECUTABLE = tkMOO-lite-PLGd
 LIB_FILES = plugins
 # WORLDS_FILE = dot.worlds.tkm
 BIN_FILES = $(EXECUTABLE)
@@ -43,10 +43,10 @@ executable: clean
 	fi
 	echo "#!/bin/sh" >> $(EXECUTABLE)
 	echo "# the next line restarts using wish \\" >> $(EXECUTABLE)
-	echo 'exec wish "$$0" "$$@" \n' >> $(EXECUTABLE)
-	echo "set tkmooLibrary $(TKMOO_LIB_DIR) \n" >> $(EXECUTABLE)
+	echo 'exec wish "$$0" "$$@"\n' >> $(EXECUTABLE)
+	echo "set tkmooLibrary $(TKMOO_LIB_DIR)\n" >> $(EXECUTABLE)
 	cat ./source.tcl >> $(EXECUTABLE)
-	chmod 0555 $(EXECUTABLE)
+	chmod 0755 $(EXECUTABLE)
 
 install: $(EXECUTABLE)
 	-mkdir -p $(TKMOO_LIB_DIR)
