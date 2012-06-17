@@ -2021,15 +2021,12 @@ proc window.place_absolute {win x y} {
 }
 proc window.place_nice {this {that ""}} {
     if { $that != "" } {
-        #PLG DOES THIS EVER HAPPEN !?
     	set x [winfo rootx $that]
     	set y [winfo rooty $that]
 
-        puts $x
-        puts $y
-
     	incr x 50
     	incr y 50
+
     	window.place_absolute $this $x $y
     } {
     	window.place_absolute $this 50 50
@@ -2045,7 +2042,9 @@ proc window.set_geometry {win geometry} {
 
 proc window.bind_escape_to_destroy win {
     global tcl_platform
-    if { $tcl_platform(os) != "Darwin" } {
+    if { $tcl_platform(os) == "Darwin" } {
+        bind $win <Command-w> "destroy $win"
+    } {
         bind $win <Escape> "destroy $win"
     }
 }
@@ -2673,7 +2672,9 @@ proc window.post_connect {} {
     $menu add command -label "Open Connection..." -underline 0 -command "window.open"
     window.hidemargin $menu
 
-    $menu add command -label "Close Connection" -underline 0 -command "window.do_disconnect" -accelerator "[window.accel Ctrl]+K"
+    $menu add command -label "Close Connection" -underline 0 \
+        -command "window.do_disconnect" \
+        -accelerator "[window.accel Ctrl]+K"
     bind . <Command-k> "window.do_disconnect"
     window.hidemargin $menu
 
@@ -2702,7 +2703,9 @@ proc window.post_connect {} {
         		    set label "$hint. [worlds.get $world Name]"
         		}
 
-                $menu add command -label $label -underline 0 -command "client.connect_world $world" -accelerator "Cmd+$hint"
+                $menu add command -label $label -underline 0 \
+                    -command "client.connect_world $world" \
+                    -accelerator "Cmd+$hint"
                 bind . <Command-$hint> "client.connect_world $world"
                 window.hidemargin $menu
     	    }
@@ -4990,11 +4993,11 @@ proc edit.create { title icon_title } {
     menu $w.controls.view -tearoff 0
 
     $w.controls.view add command -label "Find" -underline 0 -command "edit.find $w" -accelerator "[window.accel Ctrl]+F"
-    #PLG:TODO bind $w <Command-f> 
+    bind $w <Command-f> "edit.find $w"
 	window.hidemargin $w.controls.view
 
     $w.controls.view add command -label "Goto" -underline 0 -command "edit.goto $w" -accelerator "[window.accel Ctrl]+G"
-    #PLG:TODO bind $w <Command-g> 
+    bind $w <Command-g> "edit.goto $w"
 	window.hidemargin $w.controls.view
 
     ## add the Window menu
@@ -5120,11 +5123,12 @@ proc edit.find w {
 
     if { [winfo exists $f] == 0 } {
         toplevel $f
-	window.configure_for_macintosh $f
+    
+    	#PLG window.configure_for_macintosh $f
 
-	window.bind_escape_to_destroy $f
+    	window.bind_escape_to_destroy $f
 
-	window.place_nice $f $w
+    	window.place_nice $f $w
 
         $f configure -bd 0 -highlightthickness 0
 
