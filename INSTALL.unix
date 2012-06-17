@@ -1,0 +1,24 @@
+Installing tkMOO-light on UNIX
+==============================
+
+If you can read this file then you've successfully unpacked the
+distribution's .tar.gz archive.  Unpacking the .tar.gz archive
+produces the following files:
+
+  ./README.md           Important information.
+  ./INSTALL.unix        This file.
+  ./LICENCE             The software licence, PLEASE READ THIS.
+  ./source.tcl          The client software.  
+                        'make' converts this script into a runnable form.
+  ./bugsmail.txt        Email template for reporting bugs.
+  ./plugins/            A directory containing some plugin scripts for the client.
+  ./dot.tkmoolightrc    examples of Tk resource settings.  
+                        Rename to '.tkmoolightrc' if you'd like to use these settings.
+
+On Unix:
+
+  Edit the Makefile to set values for TKMOO_LIB_DIR, TKMOO_BIN_DIR and WISH
+
+  'make' will build the executable tkMOO-lite .
+
+  'make install' will copy the executable and icon files to the TKMOO_LIB_DIR .

@@ -1,0 +1,11 @@
+## An example Resources File for tkMOO-light.  Entries in this file
+## can be used to control the look of the Tk widgets used by the 
+## client.  Colour and font values set by the Preferences Editor
+## will override entries in this file.  Tk uses the Xdefaults syntax.
+
+## All Text widgets have steel-grey background colours.
+#*Text.background: #c0c0c0
+
+## Fonts appear in white, this setting is overriden for the client's
+## main output window by settings in the Preferences Editor.
+#*foreground: white
