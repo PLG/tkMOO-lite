@@ -19,7 +19,7 @@
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-set tkmooVersion "0.4-PLGd"
+set tkmooVersion "0.4.1-PLGd"
 set tkmooBuildTime "Sun Jun 17 16:00:54 CEST 2012"
 
 #if { $tcl_platform(platform) == "macintosh" } {
@@ -301,7 +301,7 @@ proc client.stop {} {
     modules.stop
     set session ""
     catch {
-	set session [db.get current session]
+    	set session [db.get current session]
     }
     io.stop_session $session
 }
@@ -523,12 +523,11 @@ proc client.exit {} {
     #
     #
     global tcl_platform
-    if { $tcl_platform(platform) == "macintosh" } {
+    if { $tcl_platform(os) == "Darwin" } {
         after 1500 destroy .
     } {
-	destroy .
+    	destroy .
     }
-
 
     global tcl_platform
     if { $tcl_platform(platform) == "windows" } {
@@ -1271,13 +1270,9 @@ set help_subject(Worlds) {
     from the {bold first} matching file is used by the client:
 
     {preformatted
-    On UNIX		./.worlds.tkm
-    			$HOME/.tkMOO-lite/.worlds.tkm
-    			$tkmooLibrary/.worlds.tkm
-
-    On Macintosh	worlds.tkm
-    			$env(PREF_FOLDER):worlds.tkm
-    			$tkmooLibrary:worlds.tkm
+    On UNIX/MaxOSX  ./worlds.tkm
+    			$HOME/.tkMOO-lite/worlds.tkm
+    			$tkmooLibrary/worlds.tkm
 
     On Windows		.\worlds.tkm
     			$HOME\tkmoo\worlds.tkm
@@ -2712,10 +2707,19 @@ proc window.post_connect {} {
     	}
     }
 
+    # We are NOT going to install this menu option for MacOSX
+    # see http://www.tcl.tk/man/tcl8.6/TkCmd/tk_mac.htm
+    # We are going to declare the function proc ::tk::mac::Quit below that
+    # will be called off the Wish menu with Cmd-Q instead
+    # 
     # $menu add separator
     # $menu add command -label "Quit" -underline 0 -command "client.exit"
 
     window.hidemargin $menu
+}
+
+proc ::tk::mac::Quit {} {
+    client.exit
 }
 
 proc window.load_connections_menu {} {
@@ -3838,7 +3842,7 @@ proc io.receive {} {
 
 proc io.stop_session session {
     if { $session == "" } {
-	return
+    	return
     }
     set conn [db.get $session connection]
     if { $conn == "" } {
@@ -4058,7 +4062,7 @@ proc worlds.start {} {
 
     set current [worlds.get_current]
     if { $current != "" } {
-	worlds.unset $current IsCurrentWorld
+    	worlds.unset $current IsCurrentWorld
     }
 
     set file [worlds.file]
@@ -4100,16 +4104,6 @@ World: Localhost
 Host: 127.0.0.1
 Port: 7777
 ShortList: On
-
-World: JHM
-Host: jhm.moo.mud.org
-Port: 1709
-ShortList: On
-
-World: Diversity University
-Host: moo.du.org
-Port: 8888
-ShortList: On 
 "
 
 proc worlds.default_tkm {} {
@@ -4123,7 +4117,7 @@ proc worlds.preferred_file {} {
     set dirs {}
     switch $tcl_platform(platform) {
 	windows { 
-	    set file worlds.tkm
+    	    set file worlds.tkm
             if { [info exists env(TKMOO_LIB_DIR)] } {
                 lappend dirs [file join $env(TKMOO_LIB_DIR)]
             }
@@ -4131,10 +4125,10 @@ proc worlds.preferred_file {} {
                 lappend dirs [file join $env(HOME) tkmoo]
             }
             lappend dirs [file join $tkmooLibrary]
-	}
+	   }
 	unix -
 	default { 
-	    set file worlds.tkm
+            set file worlds.tkm
             if { [info exists env(TKMOO_LIB_DIR)] } {
                 lappend dirs [file join $env(TKMOO_LIB_DIR)]
             }
@@ -4146,9 +4140,7 @@ proc worlds.preferred_file {} {
     }
 
     foreach dir $dirs {
-        if { [file exists $dir] &&
-             [file isdirectory $dir] &&
-             [file writable $dir] } {
+        if { [file exists $dir] && [file isdirectory $dir] && [file writable $dir] } {
             return [file join $dir $file]
         }
     }
@@ -4165,17 +4157,17 @@ proc worlds.file {} {
 	windows {
             lappend files [file join [pwd] worlds.tkm]
             lappend files [worlds.preferred_file]
-	}
+    	}
 	unix -
 	default {
             lappend files [file join [pwd] worlds.tkm]
             lappend files [worlds.preferred_file]
-	}
+    	}
     }
 
     foreach file $files {
         if { [file exists $file] } {
-	    return $file
+    	    return $file
         }
     }
 
@@ -4210,11 +4202,11 @@ proc worlds.read_worlds file {
     set worlds_file ""
     catch { set worlds_file [open $file "r"] }
     if { $worlds_file == "" } {
-	window.displayCR "Can't read file $file" window_highlight
-	return $tmp
+    	window.displayCR "Can't read file $file" window_highlight
+    	return $tmp
     }
     while { [gets $worlds_file line] != -1 } {
-	lappend tmp $line
+    	lappend tmp $line
     }
     close $worlds_file
     return $tmp
@@ -4231,12 +4223,12 @@ proc worlds.load {} {
 
     if { $file != "" } {
         if { [worlds.file_changed $file] == 0 } {
-	    return 0
-	} 
-	set worlds_lines [worlds.read_worlds $file]
-	worlds.update_mtime $file
+	       return 0
+    	} 
+    	set worlds_lines [worlds.read_worlds $file]
+    	worlds.update_mtime $file
     } {
-	set worlds_lines [worlds.default_tkm]
+    	set worlds_lines [worlds.default_tkm]
     }
 
     catch { unset worlds_worlds_db }
@@ -4245,7 +4237,7 @@ proc worlds.load {} {
 
     set new_worlds [worlds.apply_lines $worlds_lines]
     if { $new_worlds != {} } {
-	set worlds_worlds [concat $worlds_worlds $new_worlds]
+    	set worlds_worlds [concat $worlds_worlds $new_worlds]
     }
 
     worlds.make_default_world
@@ -4262,23 +4254,23 @@ proc worlds.apply_lines lines {
     set new_worlds {}
     foreach line $lines {
         if { [regexp {^ *#} $line] == 1 } {
-	    continue
+    	    continue
         }
-	if { [regexp {^([^:]+): (.*)} $line _ key value] == 1 } {
+    	if { [regexp {^([^:]+): (.*)} $line _ key value] == 1 } {
             set lkey [string tolower $key]
-	    if { $lkey == "world" } {
-	        set world $value
+                if { $lkey == "world" } {
+                set world $value
                 set index [worlds.new_world]
-		lappend new_worlds $index
-		worlds.set $index Name $world
+            	lappend new_worlds $index
+            	worlds.set $index Name $world
             } {
-	        if { [info exists worlds_worlds_db($index:$lkey)] } {
-	            worlds.set $index $key "[worlds.get $index $key]\n$value"
-		} {
-		    worlds.set $index $key $value
-		}
-	    }
-	}
+                if { [info exists worlds_worlds_db($index:$lkey)] } {
+                    worlds.set $index $key "[worlds.get $index $key]\n$value"
+            	} {
+            	    worlds.set $index $key $value
+            	}
+            }
+        }
     }
     return $new_worlds
 }
@@ -4287,7 +4279,7 @@ proc worlds.create_default_file {} {
     global tcl_platform
     set file [worlds.file]
     if { $file != "" } {
-	return
+    	return
     }
 
     set file [worlds.preferred_file]
@@ -4295,17 +4287,16 @@ proc worlds.create_default_file {} {
     set fd ""
     catch { set fd [open $file "w+"] }
     if { $fd == "" } {
-	window.displayCR "Can't write to file $file" window_highlight
-	return
+    	window.displayCR "Can't write to file $file" window_highlight
+    	return
     }
-
 
     puts $fd "# $file"
     puts $fd "# This file is created automatically by the preferences editor"
     puts $fd "# any changes you make by hand to this file will be lost."
 
     foreach line [worlds.default_tkm] {
-	puts $fd $line
+    	puts $fd $line
     }
     close $fd
     if { $tcl_platform(platform) == "unix" } {
@@ -4326,19 +4317,17 @@ proc worlds.save {} {
 
     set directives {}
     foreach key [array names worlds_worlds_db] {
-	set wd [split $key ":"]
-	set d [lindex $wd 1]
-	if { $d == "name" } { continue }
-	set all_used_directives($d) 1
+    	set wd [split $key ":"]
+    	set d [lindex $wd 1]
+    	if { $d == "name" } { continue }
+    	set all_used_directives($d) 1
     }
     catch { set directives [array names all_used_directives] }
 
-
-
     foreach d $directives {
         set get_directive [preferences.get_directive $d]
-	set default_if_empty($d)      [util.assoc $get_directive default_if_empty]
-	set directive_type($d)        [lindex [util.assoc $get_directive type] 1]
+    	set default_if_empty($d)      [util.assoc $get_directive default_if_empty]
+    	set directive_type($d)        [lindex [util.assoc $get_directive type] 1]
         set directive_has_default($d) [worlds.get_default $d]
     }
 
@@ -4347,28 +4336,22 @@ proc worlds.save {} {
     set fd ""
     catch { set fd [open $file "w+"] }
     if { $fd == "" } {
-	window.displayCR "Can't write to file $file" window_highlight
-	return
+    	window.displayCR "Can't write to file $file" window_highlight
+    	return
     }
-
 
     puts $fd "# $file"
     puts $fd "# This file is created automatically by the preferences editor"
     puts $fd "# any changes you make by hand to this file will be lost."
 
-
     foreach world $worlds {
 
+    	if { [info exists worlds_worlds_db($world:mustnotsave)] } {
+    	    continue
+    	}
 
-
-	if { [info exists worlds_worlds_db($world:mustnotsave)] } {
-	    continue
-	}
-
-
-	puts $fd "# ----"
-	puts $fd "World: $worlds_worlds_db($world:name)"
-
+    	puts $fd "# ----"
+    	puts $fd "World: $worlds_worlds_db($world:name)"
 
         foreach directive $directives {
 	    if { [info exists worlds_worlds_db($world:$directive)] } {
@@ -5310,30 +5293,24 @@ proc initapi.rcfile {} {
 
     set files {}
     switch $tcl_platform(platform) {
-        macintosh {
-            lappend files [file join [pwd] tkMOO-light.RC]
-	    if { [info exists env(PREF_FOLDER)] } {
-                lappend files [file join $env(PREF_FOLDER) tkMOO-light.RC]
-	    }
-        }
         windows {
-	    lappend files [file join [pwd] tkmoo.res]
-	    if { [info exists env(TKMOO_LIB_DIR)] } {
+    	    lappend files [file join [pwd] tkmoo.res]
+            if { [info exists env(TKMOO_LIB_DIR)] } {
                 lappend files [file join $env(TKMOO_LIB_DIR) tkmoo tkmoo.res]
-	    }
-	    if { [info exists env(HOME)] } {
+            }
+            if { [info exists env(HOME)] } {
                 lappend files [file join $env(HOME) tkmoo tkmoo.res]
-	    }
+            }
         }
         unix -
         default {
             lappend files [file join [pwd] .tkmoolightrc]
-	    if { [info exists env(TKMOO_LIB_DIR)] } {
+            if { [info exists env(TKMOO_LIB_DIR)] } {
                 lappend files [file join $env(TKMOO_LIB_DIR) .tkmoolightrc]
-	    }
-	    if { [info exists env(HOME)] } {
+            }
+            if { [info exists env(HOME)] } {
                 lappend files [file join $env(HOME) .tkmoolightrc]
-	    }
+            }
         }
     }
 
@@ -5369,7 +5346,7 @@ proc ui.page_end win {
 proc ui.paste_selection win { 
     tk_textPaste $win 
     global tcl_platform
-    if { $tcl_platform(platform) == "macintosh" && "$win" == ".input" } {
+    if { $tcl_platform(os) == "Darwin" && "$win" == ".input" } {
         focus .input
     }
 }
@@ -8281,8 +8258,7 @@ proc awns.create_worlds_entry {} {
         worlds.set $world IsGuestAtMooDotAwnsDotCom 1
     }
 
-
-    worlds.set_if_different $world Name "Guest@Moo.Awns.Com"
+    worlds.set_if_different $world Name "Guest@MOO.AWNS.COM"
     worlds.set_if_different $world Host $host
     worlds.set_if_different $world Port 8888
     worlds.set_if_different $world Login guest
@@ -10628,40 +10604,29 @@ proc edittriggers.preferred_file {} {
 
     set dirs {}
     switch $tcl_platform(platform) {
-        macintosh { 
-	    if { [info exists env(TKMOO_LIB_DIR)] } {
-	        lappend dirs [file join $env(TKMOO_LIB_DIR)]
-	    }
-	    if { [info exists env(PREF_FOLDER)] } {
-                lappend dirs [file join $env(PREF_FOLDER)]
-	    }
-            lappend dirs [file join $tkmooLibrary]       
-        }
         windows { 
-	    if { [info exists env(TKMOO_LIB_DIR)] } {
-	        lappend dirs [file join $env(TKMOO_LIB_DIR)]
-	    }
-	    if { [info exists env(HOME)] } {
-	        lappend dirs [file join $env(HOME) tkmoo]
-	    }
+    	    if { [info exists env(TKMOO_LIB_DIR)] } {
+    	        lappend dirs [file join $env(TKMOO_LIB_DIR)]
+    	    }
+    	    if { [info exists env(HOME)] } {
+    	        lappend dirs [file join $env(HOME) tkmoo]
+    	    }
             lappend dirs [file join $tkmooLibrary]       
         }
         unix -
         default { 
-	    if { [info exists env(TKMOO_LIB_DIR)] } {
-	        lappend dirs [file join $env(TKMOO_LIB_DIR)]
-	    }
-	    if { [info exists env(HOME)] } {
-	        lappend dirs [file join $env(HOME) .tkMOO-lite]
-	    }
+            if { [info exists env(TKMOO_LIB_DIR)] } {
+                lappend dirs [file join $env(TKMOO_LIB_DIR)]
+            }
+            if { [info exists env(HOME)] } {
+                lappend dirs [file join $env(HOME) .tkMOO-lite]
+            }
             lappend dirs [file join $tkmooLibrary]       
         }
     }
 
     foreach dir $dirs {
-        if { [file exists $dir] && 
-	     [file isdirectory $dir] &&
-	     [file writable $dir] } {
+        if { [file exists $dir] && [file isdirectory $dir] && [file writable $dir] } {
             return [file join $dir $file]
         }
     }
@@ -12061,9 +12026,9 @@ proc preferences.copy_middle_to_world {} {
     global preferences_current preferences_v preferences_data
 
     foreach name [array names preferences_data] {
-	foreach info $preferences_data($name) {
-	    set dtype([lindex [util.assoc $info directive] 1]) [lindex [util.assoc $info type] 1]
-	}
+    	foreach info $preferences_data($name) {
+    	    set dtype([lindex [util.assoc $info directive] 1]) [lindex [util.assoc $info type] 1]
+    	}
     }
 
     set keys [array names preferences_v]
@@ -12072,24 +12037,24 @@ proc preferences.copy_middle_to_world {} {
 
         foreach {world directive} [split $key ","] {break}
 
-	set type ""
-	catch { set type $dtype($directive) }
+    	set type ""
+    	catch { set type $dtype($directive) }
 
-	if { $type == "" } {
-	    puts "preferences: c2m can't find a type for $directive!"
-	}
+    	if { $type == "" } {
+    	    puts "preferences: c2m can't find a type for $directive!"
+    	}
 
-	set v $preferences_v($key)
+    	set v $preferences_v($key)
 
-	if { $type == "boolean" } {
-	    if { $v == 1 } { 
-		set v On
+    	if { $type == "boolean" } {
+    	    if { $v == 1 } { 
+        		set v On
             } {
-	        set v Off
-	    }
-	}
+    	        set v Off
+    	    }
+    	}
 
-	worlds.set $world $directive $v
+    	worlds.set $world $directive $v
     }
 }
 
@@ -12128,7 +12093,7 @@ proc preferences.create_edit_window {} {
     window.configure_for_macintosh $pw
 
     global tcl_platform
-    if { $tcl_platform(platform) != "macintosh" } {
+    if { $tcl_platform(os) != "Darwin" } {
         bind $pw <Escape> "preferences.clean_up; destroy $pw"
     }
 
@@ -12137,7 +12102,6 @@ proc preferences.create_edit_window {} {
     $pw configure -bd 0
 
     preferences.set_title "tkMOO-light: Preferences"
-
 
     set nottop $pw.nottop
     frame $nottop -bd 0 -highlightthickness 0
@@ -12152,29 +12116,25 @@ proc preferences.create_edit_window {} {
     frame $bottom -bd 0 -highlightthickness 0
     button $bottom.save -text "Save" -command preferences.save
     button $bottom.reset -text "Reset" \
-	-command {preferences.remove_middle; preferences.fill_middle $preferences_current $preferences_category}
+	   -command {preferences.remove_middle; preferences.fill_middle $preferences_current $preferences_category}
     button $bottom.cancel -text "Cancel" \
-	-command {preferences.clean_up; destroy .preferences}
+	   -command {preferences.clean_up; destroy .preferences}
 
-
-    pack $bottom.save $bottom.reset $bottom.cancel -side left \
-	-padx 5 -pady 5
+    pack $bottom.save $bottom.reset $bottom.cancel -side left -padx 5 -pady 5
     pack $bottom -side bottom
-
 
     set middle $pw.middle
     set relief sunken
     text $middle -bd 1 -relief $relief -highlightthickness 0 -width 60 \
-	-state disabled -cursor {} -yscrollcommand "$pw.middle_scrollbar set" \
-	-height 26
-    scrollbar $pw.middle_scrollbar -command "$pw.middle yview" \
-	-highlightthickness 0
+	   -state disabled -cursor {} -yscrollcommand "$pw.middle_scrollbar set" -height 26
+    scrollbar $pw.middle_scrollbar -command "$pw.middle yview" -highlightthickness 0
     window.set_scrollbar_look $pw.middle_scrollbar
     pack $pw.middle_scrollbar -side right -fill y
+
     foreach binding {
-	1 B1-Motion Double-1 Triple-1 Shift-1 Double-Shift-1 Triple-Shift-1
+	   1 B1-Motion Double-1 Triple-1 Shift-1 Double-Shift-1 Triple-Shift-1
     } {
-	bind $pw.middle <$binding> {break}
+	   bind $pw.middle <$binding> {break}
     }
     pack $middle -fill both -expand on
     $middle configure -background [$pw cget -background]
@@ -13265,16 +13225,6 @@ proc plugin.plugins_directories {} {
     global tkmooLibrary tcl_platform env
     set dirs {}
     switch $tcl_platform(platform) {
-        macintosh {
-            lappend dirs [file join [pwd] plugins]
-            if { [info exists env(TKMOO_LIB_DIR)] } {
-                lappend dirs [file join $env(TKMOO_LIB_DIR) plugins]
-            }
-            if { [info exists env(PREF_FOLDER)] } {
-                lappend dirs [file join $env(PREF_FOLDER) plugins]
-            }
-            lappend dirs [file join $tkmooLibrary plugins]
-        }
         windows {
             lappend dirs [file join [pwd] plugins]
             if { [info exists env(TKMOO_LIB_DIR)] } {
