@@ -22,12 +22,13 @@ WISH = /usr/bin/wish
 
 EXECUTABLE = tkMOO-lite-PLGd
 APP = tkMOO.app
+WFLOW = Contents/document.wflow
 LIB_FILES = plugins
 # WORLDS_FILE = dot.worlds.tkm
 BIN_FILES = $(EXECUTABLE)
 APPLICATIONS= $(HOME)/Applications
-MACENV= $(HOME)/.MacOSX
-ENVPLIST= environment.plist
+# MACENV= $(HOME)/.MacOSX
+# ENVPLIST= environment.plist
 
 all: executable 
 
@@ -39,7 +40,6 @@ clean:
 
 macclean:
 	rm -fr $(APPLICATIONS)/$(APP)
-	rm -f $(MACENV)/$(ENVPLIST)
 
 executable: clean
 	@if [ ! -h $(WISH) ]; then \
@@ -65,8 +65,7 @@ install: $(EXECUTABLE)
 macinst:
 	mkdir -p $(APPLICATIONS)
 	cp -fr ./App/$(APP) $(APPLICATIONS)/$(APP)
-	mkdir -p $(MACENV)
-	sed -e "s!_tkmoo_bin_dir_!$(PWD)!g" ./App/$(ENVPLIST) > $(MACENV)/$(ENVPLIST)
+	sed -e "s!_tkmoo_bin_dir_!$(PWD)!g" ./App/$(APP)/$(WFLOW) > $(APPLICATIONS)/$(APP)/$(WFLOW)
 
-	@echo "\nYou **MUST** re-log for the environment variables to register. Sorry.\n"
+	@echo "\nHappy Clam.\n"
 

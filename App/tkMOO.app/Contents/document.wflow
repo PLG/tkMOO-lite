@@ -59,8 +59,7 @@
 				<key>ActionParameters</key>
 				<dict>
 					<key>COMMAND_STRING</key>
-					<string>
-cd $TKMOO_BIN_DIR
+					<string>cd "_tkmoo_bin_dir_"
 ./tkMOO-lite-PLGd</string>
 					<key>CheckedForUserDefaultShell</key>
 					<true/>
