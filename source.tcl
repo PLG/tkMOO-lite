@@ -11735,85 +11735,81 @@ proc window.open_list {} {
 
     if { [winfo exists $o] == 0 } {
 
-    toplevel $o
-    window.configure_for_macintosh $o
+        toplevel $o
+        window.configure_for_macintosh $o
 
-    window.bind_escape_to_destroy $o
+        window.bind_escape_to_destroy $o
 
-    window.place_nice $o
+        window.place_nice $o
 
-    $o configure -bd 0
+        $o configure -bd 0
 
-    wm iconname $o "Worlds"
-    wm title $o "tkMOO-light: Worlds"
+        wm iconname $o "Worlds"
+        wm title $o "tkMOO-light: Worlds"
 
-    listbox $o.lb \
-	-height 15 -width 35 \
-	-highlightthickness 0 \
-	-setgrid 1 \
-	-background #ffffff \
-	-yscroll "$o.sb set"
+        listbox $o.lb \
+        	-height 15 -width 35 \
+        	-highlightthickness 0 \
+        	-setgrid 1 \
+        	-background #ffffff \
+        	-yscroll "$o.sb set"
 
-	bind $o.lb        <Button1-ButtonRelease> "open.do_select"
-	bind $o.lb <Double-Button1-ButtonRelease> "open.do_open"
-	bind $o.lb <Triple-Button1-ButtonRelease> ""
+    	bind $o.lb <Button1-ButtonRelease> "open.do_select"
+    	bind $o.lb <Double-Button1-ButtonRelease> "open.do_open"
+    	bind $o.lb <Triple-Button1-ButtonRelease> ""
 
-    bind $o <MouseWheel> {
-	.open_list.lb yview scroll [expr - (%D / 120) * 4] units
-    }
+        bind $o <MouseWheel> {
+        	.open_list.lb yview scroll [expr - (%D / 120) * 4] units
+        }
 
-    scrollbar $o.sb \
-	-highlightthickness 0 \
-	-command "$o.lb yview"
+        scrollbar $o.sb \
+        	-highlightthickness 0 \
+        	-command "$o.lb yview"
 
-    window.set_scrollbar_look $o.sb
+        window.set_scrollbar_look $o.sb
 
-    frame $o.f1 -bd 0
-    frame $o.f2 -bd 0
+        frame $o.f1 -bd 0
+        frame $o.f2 -bd 0
 
-    set bw 4
-    button $o.f1.up -width $bw -text "Up" -command open.do_up
-    button $o.f1.open -width $bw -text "Open" -command "open.do_open"
-    button $o.f1.edit -width $bw -text "Edit" -command "open.do_edit"
-    button $o.f1.new -width $bw -text "New" -command "open.do_new"
+        set bw 5
+        button $o.f1.up -width $bw -text "Up" -command open.do_up
+        button $o.f1.open -width $bw -text "Open" -command "open.do_open"
+        button $o.f1.edit -width $bw -text "Edit" -command "open.do_edit"
+        button $o.f1.new -width $bw -text "New" -command "open.do_new"
 
-    button $o.f2.down -width $bw -text "Down" -command open.do_down
-    button $o.f2.copy -width $bw -text "Copy" -command "open.do_copy"
-    button $o.f2.delete -width $bw -text "Delete" -command "open.do_delete"
-    button $o.f2.close -width $bw -text "Close" -command "destroy $o"
+        button $o.f2.down -width $bw -text "Down" -command open.do_down
+        button $o.f2.copy -width $bw -text "Copy" -command "open.do_copy"
+        button $o.f2.delete -width $bw -text "Delete" -command "open.do_delete"
+        button $o.f2.close -width $bw -text "Close" -command "destroy $o"
 
-    pack $o.f1.up $o.f1.open $o.f1.edit $o.f1.new \
-	-side left \
-	-padx 5 -pady 5
-    pack $o.f2.down $o.f2.copy $o.f2.delete $o.f2.close \
-	-side left \
-	-padx 5 -pady 5
+        pack $o.f1.up $o.f1.open $o.f1.edit $o.f1.new -side left -padx 5 -pady 5
+        pack $o.f2.down $o.f2.copy $o.f2.delete $o.f2.close -side left -padx 5 -pady 5
 
-    pack $o.f2 -side bottom
-    pack $o.f1 -side bottom
+        pack $o.f2 -side bottom
+        pack $o.f1 -side bottom
 
-    pack $o.sb -fill y -side right -fill y
-    pack $o.lb -side left -expand 1 -fill both
+        pack $o.sb -fill y -side right -fill y
+        pack $o.lb -side left -expand 1 -fill both
 
-if { 0 } {
-    pack $o.f1.up -side left
-    pack $o.f1.spacer -side left -fill y
-    pack $o.f1.open -side left
-    pack $o.f1.new -side right
-    pack $o.f1.edit
+        if { 0 } {
+            pack $o.f1.up -side left
+            pack $o.f1.spacer -side left -fill y
+            pack $o.f1.open -side left
+            pack $o.f1.new -side right
+            pack $o.f1.edit
 
-    pack $o.f2.down -side left
-    pack $o.f2.spacer -side left -fill y
-    pack $o.f2.copy -side left
-    pack $o.f2.close -side right
-    pack $o.f2.delete
+            pack $o.f2.down -side left
+            pack $o.f2.spacer -side left -fill y
+            pack $o.f2.copy -side left
+            pack $o.f2.close -side right
+            pack $o.f2.delete
 
-    pack $o.f2 -fill x -side bottom
-    pack $o.f1 -fill x -side bottom
+            pack $o.f2 -fill x -side bottom
+            pack $o.f1 -fill x -side bottom
 
-    pack $o.sb -fill y -side right -fill y
-    pack $o.lb -side left -expand 1 -fill both
-}
+            pack $o.sb -fill y -side right -fill y
+            pack $o.lb -side left -expand 1 -fill both
+        }
 
     }
 
