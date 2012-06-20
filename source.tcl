@@ -2974,7 +2974,7 @@ proc window.buildWindow {} {
     #PLG window size
     text .output -cursor {} \
         -font [fonts.fixedwidth] \
-        -width 110 -height 35 \
+        -width 126 -height 35 \
         -setgrid 1 \
         -relief flat \
         -bd 0 \
