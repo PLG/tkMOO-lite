@@ -21,12 +21,13 @@ WISH = /usr/bin/wish
 # ---------------- NO NEED TO CHANGE ANYTHING BELOW THIS LINE ---------------
 
 EXECUTABLE = tkMOO-lite-PLGd
+APP = tkMOO.app
 LIB_FILES = plugins
 # WORLDS_FILE = dot.worlds.tkm
 BIN_FILES = $(EXECUTABLE)
 APPLICATIONS= $(HOME)/Applications
 MACENV= $(HOME)/.MacOSX
-# ENVPLIST= $(shell cat ./App/environment.plist)
+ENVPLIST= environment.plist
 
 all: executable 
 
@@ -35,6 +36,10 @@ all: executable
 clean:
 	rm -f $(EXECUTABLE)
 	rm -f $(TKMOO_BIN_DIR)/$(EXECUTABLE)
+
+macclean:
+	rm -fr $(APPLICATIONS)/$(APP)
+	rm -f $(MACENV)/$(ENVPLIST)
 
 executable: clean
 	@if [ ! -h $(WISH) ]; then \
@@ -59,9 +64,9 @@ install: $(EXECUTABLE)
 
 macinst:
 	mkdir -p $(APPLICATIONS)
-	cp -fr ./App/tkMOO.app $(APPLICATIONS)/
+	cp -fr ./App/$(APP) $(APPLICATIONS)/$(APP)
 	mkdir -p $(MACENV)
-	sed -e "s!_tkmoo_bin_dir_!$(PWD)!g" ./App/environment.plist > $(MACENV)/environment.plist
+	sed -e "s!_tkmoo_bin_dir_!$(PWD)!g" ./App/$(ENVPLIST) > $(MACENV)/$(ENVPLIST)
 
 	@echo "\nYou **MUST** re-log for the environment variables to register. Sorry.\n"
 
