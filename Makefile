@@ -24,6 +24,9 @@ EXECUTABLE = tkMOO-lite-PLGd
 LIB_FILES = plugins
 # WORLDS_FILE = dot.worlds.tkm
 BIN_FILES = $(EXECUTABLE)
+APPLICATIONS= $(HOME)/Applications
+MACENV= $(HOME)/.MacOSX
+# ENVPLIST= $(shell cat ./App/environment.plist)
 
 all: executable 
 
@@ -49,7 +52,16 @@ executable: clean
 	chmod 0755 $(EXECUTABLE)
 
 install: $(EXECUTABLE)
-	-mkdir -p $(TKMOO_LIB_DIR)
-	-cp -fr $(LIB_FILES) $(TKMOO_LIB_DIR)
-	-mkdir -p $(TKMOO_BIN_DIR)
+	mkdir -p $(TKMOO_LIB_DIR)
+	cp -fr $(LIB_FILES) $(TKMOO_LIB_DIR)
+	mkdir -p $(TKMOO_BIN_DIR)
 	cp -fr $(BIN_FILES) $(TKMOO_BIN_DIR)
+
+macinst:
+	mkdir -p $(APPLICATIONS)
+	cp -fr ./App/tkMOO.app $(APPLICATIONS)/
+	mkdir -p $(MACENV)
+	sed -e "s!_tkmoo_bin_dir_!$(PWD)!g" ./App/environment.plist > $(MACENV)/environment.plist
+
+	@echo "\nYou **MUST** re-log for the environment variables to register. Sorry.\n"
+
