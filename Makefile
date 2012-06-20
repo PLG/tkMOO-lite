@@ -64,8 +64,8 @@ install: $(EXECUTABLE)
 
 macinst:
 	mkdir -p $(APPLICATIONS)
-	cp -fr ./App/$(APP) $(APPLICATIONS)/$(APP)
-	sed -e "s!_tkmoo_bin_dir_!$(PWD)!g" ./App/$(APP)/$(WFLOW) > $(APPLICATIONS)/$(APP)/$(WFLOW)
+	tar -C $(APPLICATIONS) -xzf ./App/$(APP).tgz
+	sed -e "s!_tkmoo_bin_dir_!$(PWD)!g" $(APPLICATIONS)/$(APP)/$(WFLOW).src > $(APPLICATIONS)/$(APP)/$(WFLOW)
 
 	@echo "\nHappy Clam.\n"
 
