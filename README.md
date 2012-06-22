@@ -7,6 +7,7 @@ but has ended up as a major revision (for MacOSX)
 - removed backward compatibility... needs at least wish8.5
 - fixed Mac keyboard shortcuts
 - changed menus and keyboard shortcut behavior for fast MOO editting
+- added Automator MacApp installer
 
 I must also add that I have never wasted as much time on such unreadable
 code in my life. Overloading menu creation code, hardcode entry labels,
