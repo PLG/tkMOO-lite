@@ -1,3 +1,14 @@
+Installing tkMOO-light-PLGd on MacOSX
+==============================
+
+Of course Mac is *nix-based. But, I thought I would make it a bit easier on myself running Mac.
+So, I added a Automator Mac App.
+
+  'mac macinst' will install a Automator Mac App in the ~/Applications folder.
+
+  'make macclean' will erase the previous changes made by 'macinst'
+
+
 Installing tkMOO-light on UNIX
 ==============================
 
