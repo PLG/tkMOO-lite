@@ -1,5 +1,6 @@
-# tkMOO-light is Copyright (c) Andrew Wilson 1994,1995,1996,1997,1998,
-#                                            1999,2000,2001
+# tkMOO-light is Copyright (c) Andrew Wilson 1994,1995,1996,1997,1998,1999,2000,2001
+# tkMOO-SE is Copyright (c) Stephen Alderman 2003-2006.
+# tkMOO-lite is Copyright (c) PLG 2012
 # 
 # 	All Rights Reserved
 # 
@@ -19,7 +20,7 @@
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-set tkmooVersion "0.4.1-PLGd"
+set tkmooVersion "0.4.2-PLGd"
 set tkmooBuildTime "Sun Jun 17 16:00:54 CEST 2012"
 
 #if { $tcl_platform(platform) == "macintosh" } {
@@ -1289,6 +1290,12 @@ set help_subject(About) {
 
     tkMOO-light is Copyright (c) Andrew Wilson
     1994,1995,1996,1997,1998,1999,2000,2001.  All Rights Reserved.
+    
+    tkMOO-SE is Copyright (c) Stephen Alderman
+    2003-2006.  All Rights Reserved.
+    
+    tkMOO-lite is Copyright (c) PLG 
+    2012.  All Rights Reserved.
 
     {paragraph foo}
 
@@ -1797,6 +1804,10 @@ set help_subject(LICENCE) {
     {header LICENCE}
 tkMOO-light is Copyright (c) Andrew Wilson 1994,1995,1996,1997,1998,
                                            1999,2000,2001.
+                                           
+tkMOO-SE is Copyright (c) Stephen Alderman 2003-2006.
+
+tkMOO-lite is Copyright (c) PLG 2012.
 
 	All Rights Reserved.
 
@@ -1807,7 +1818,7 @@ and non-commercial use. No commercial or profitable use of this
 software may be made without the prior permission of the author.
     {paragraph foo}
 
-THIS SOFTWARE IS PROVIDED BY ANDREW WILSON ``AS IS'' AND ANY
+THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY
 EXPRESSED OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
 THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
 PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL ANDREW WILSON BE LIABLE
@@ -5171,7 +5182,7 @@ proc edit.do_find { w direction } {
     set psn [$w.t search -$direction -count length -- $string $from]
     if {$psn != ""} {
         $w.t tag remove sel 0.0 end
-	tkTextSetCursor $w.t $psn
+	::tk::TextScrollPages $w.t $psn
         $w.t tag add sel $psn "$psn + $length char"
         edit.show_line_number $w
 	return 1
@@ -5201,7 +5212,7 @@ proc edit.do_replace_all w {
     set psn "0.0"
     while { [set psn [$w.t search -forwards -count length -- $find $psn end]] != "" } {
 	$w.t tag remove sel 0.0 end
-	tkTextSetCursor $w.t $psn
+	::tk::TextScrollPages $w.t $psn
 	$w.t tag add sel $psn "$psn + $length char"
 	edit.do_replace $w
 	set psn [$w.t index "$psn + $lreplace char"]
@@ -5263,7 +5274,7 @@ proc edit.do_goto w {
     if { $string == "" } {
 	return
     }
-    catch { tkTextSetCursor $w.t $string.0 }
+    catch { ::tk::TextScrollPages $w.t $string.0 }
     destroy $w.goto
     edit.show_line_number $w
 }
@@ -5337,10 +5348,10 @@ window.buildWindow
 
 
 proc ui.page_top win {
-    tkTextSetCursor $win 1.0
+    ::tk::TextScrollPages $win 1.0
 }
 proc ui.page_end win {
-    tkTextSetCursor $win {end - 1 char}
+    ::tk::TextScrollPages $win {end - 1 char}
 }
 
 proc ui.paste_selection win { 
@@ -5368,11 +5379,11 @@ proc ui.copy_selection win {
 }
 
 proc ui.page_down win { 
-    tkTextSetCursor $win [tkTextScrollPages $win 1]
+    ::tk::TextScrollPages $win [::tk::TextScrollPages $win 1]
 }
 
 proc ui.page_up win { 
-    tkTextSetCursor $win [tkTextScrollPages $win -1]
+    ::tk::TextScrollPages $win [::tk::TextScrollPages $win -1]
 }
 
 proc ui.clear_screen win { 
@@ -5388,27 +5399,27 @@ proc ui.delete_line_entry win {
 }
 
 proc ui.left_char win {
-    tkTextSetCursor $win insert-1c
+    ::tk::TextScrollPages $win insert-1c
 }
 
 proc ui.right_char win {
-    tkTextSetCursor $win insert+1c
+    ::tk::TextScrollPages $win insert+1c
 }
 
 proc ui.up_line win {
-    tkTextSetCursor $win [tkTextUpDownLine $win -1]
+    ::tk::TextScrollPages $win [tkTextUpDownLine $win -1]
 }
 
 proc ui.down_line win {
-    tkTextSetCursor $win [tkTextUpDownLine $win 1]
+    ::tk::TextScrollPages $win [tkTextUpDownLine $win 1]
 }
 
 proc ui.start_line win {
-    tkTextSetCursor $win {insert linestart}
+    ::tk::TextScrollPages $win {insert linestart}
 }
 
 proc ui.end_line win {
-    tkTextSetCursor $win {insert lineend}
+    ::tk::TextScrollPages $win {insert lineend}
 }
 
 proc ui.left_word_start win {
