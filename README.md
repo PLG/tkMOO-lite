@@ -13,7 +13,12 @@ I must also add that I have never wasted as much time on such unreadable
 code in my life. Overloading menu creation code, hardcode entry labels,
 and no comments cost me a single solid day of headache. ARGH!
 
+- commit'd MacMOOSE_utils by Amy Bruckman, for convenience
+  http://www.cc.gatech.edu/elc/macmoose/MacMOOSE_utils.html
+  This package is required to enable MacMOOSE in tkMOO-lite
+
 -PLG
+
 
 README for tkMOO-light
 ======================

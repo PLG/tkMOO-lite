@@ -1,0 +1,1850 @@
+
+"MacMOOSE_utils by Amy Bruckman, asb@cc.gatech.edu
+"Version 1.0b2MOO (MOOs only; no MOOSE support)
+"
+"This code lets you use the advanced editing features of the MacMOOSE and
+"WinMOOSE client programs.  This version of $MacMOOSE_utils supports only 
+"MOOs, not MOOSEs.  This software was originally developed at the MIT Media
+"Lab, and is currently maintained at the Georgia Institute of Technology.
+"MacMOOSE and WinMOOSE are trademarks of the Georgia Institute of Technology.  
+"This code is distributed free for non-commercial use only.
+"It is provided as-is; use at your own risk.  There is no warranty
+"express or implied as to its suitability for any purpose.  The most recent
+"version is available at:
+"http://www.cc.gatech.mit.edu/~asb/MacMOOSE/MacMOOSE_utils.html
+"More information about MacMOOSE and WinMOOSE are available at:
+"http://www.cc.gatech.mit.edu/~asb/
+"
+
+"*** This code must be installed as a wizard.
+@create $thing named MacMOOSE Utils:MacMOOSE Utils
+
+"*** Fill in the object number you get in the next line:
+@prop #0.macmoose_utils <fill in object number> r $hacker
+
+"*** NOTE: If you already have a #0:do_out_of_band_command,
+"*** you will need to integrate our version with yours.
+
+@program #0:"do_out_of_band_command"   this none this
+"Last modified by jaime (#2) Wed Nov 27 15:30:31 1996 EST.";
+if (callers())
+  return E_PERM;
+elseif (!valid(player))
+  return;
+else
+  set_task_perms(player);
+endif
+if (length(args) > 1 && args[1] == "#$#MacMOOSE")
+  oob_verb = args[2];
+  tokens = $macmoose_utils:simple_tokenize(argstr);
+  $command_utils:suspend_if_needed(0);
+  oob_args = (len = length(tokens)) > 2 ? tokens[3..len] | {};
+  $macmoose_utils:(oob_verb)(@oob_args);
+else
+  player:tell("Unrecognized out of band command: ", argstr);
+endif
+.
+
+"*** You should not need to modify anything from here on down.
+
+@prop $macmoose_utils."default_prefix" "_&_" r $hacker
+@prop $macmoose_utils."moosep" 0 r $hacker
+@prop $macmoose_utils."version" "1.1MOO" r $hacker
+@prop $macmoose_utils."default_verb_dobj" "none" r $hacker
+@prop $macmoose_utils."default_verb_iobj" "none" r $hacker
+@prop $macmoose_utils."default_verb_prep" "none" r $hacker
+@prop $macmoose_utils."filter_underscore_props_default" 1 r $hacker
+@prop $macmoose_utils."filter_underscore_verbs_default" 1 r $hacker
+@prop $macmoose_utils."error_codes" {} r $hacker
+@prop $macmoose_utils."recent" {} c $hacker
+@prop $macmoose_utils."recent_size" 10 r $hacker
+;;$macmoose_utils.("error_codes") = {"E_NONE", "E_TYPE", "E_DIV", "E_PERM", "E_PROPNF", "E_VERBNF", "E_INVIND", "E_RECMOVE", "E_MAXREC", "E_RANGE", "E_ARGS", "E_NACC", "E_INVARG", "E_QUOTA"}
+;;$macmoose_utils.("aliases") = {"MacMOOSE Utils"}
+;;$macmoose_utils.("description") = "MacMOOSE_utils by Amy Bruckman, asb@cc.gatech.mit.edu.  This code lets you use the advanced editing features of the MacMOOSE and WinMOOSE client programs.  This version of $MacMOOSE_utils supports only MOOs, not MOOSEs.  MacMOOSE is a trademark of the Georgia Institute of Technology.  This code is distributed free for non-commercial use only.  It is provided as-is; use at your own risk.  There is no warranty express or implied as to its suitability for any purpose.  The most recent version is available at http://www.cc.gatech.mit.edu/~asb/MacMOOSE/MacMOOSE_utils.html"
+
+@verb $macmoose_utils:"code_info" this none this rx
+@program $macmoose_utils:code_info
+"Syntax: code_info(<keyword/value argument pairs>)";
+"Keywords accepted:";
+"PREFIX_: <output prefix>";
+"           defaults to this.default_prefix";
+"CODE_REF_: <object:verb_name>";
+"CODE_TYPE_: tag ignored since this is not a MOOSE";
+"Last modified by jaime (#2) Wed Jul 17 11:02:35 1996 EDT.";
+if (caller != #0)
+  return E_PERM;
+endif
+set_task_perms(caller_perms());
+"This verb relies on being !d";
+"Ensure proper input format.";
+prefix = ((spot = "PREFIX_:" in args) && (spot < length(args))) ? args[spot + 1] | this.default_prefix;
+ref = this:to_next_tag_str(args, "CODE_REF_:");
+if (ref)
+  if (!(coderef = $code_utils:parse_verbref(ref)))
+    player:notify(prefix + " ERROR_: NOT_A_CODE_REF");
+    return;
+  endif
+elseif ((oname = this:to_next_tag_str(args, "OBJ_:")) && (cname = this:to_next_tag_str(args, "CODE_NAME_:")))
+  coderef = {oname, cname};
+else
+  player:notify(prefix + " ERROR_: MISSING_REQUIRED_ARG CODE_REF");
+  return;
+endif
+"Parse object";
+if (coderef[1][1] == "#")
+  object = toobj(coderef[1]);
+else
+  if (!valid(object = player:my_match_object(coderef[1])))
+    player:notify(prefix + " ERROR_: OBJECT_NOT_FOUND");
+    return;
+  endif
+endif
+code_name = strsub(coderef[2], " - ", "-");
+code_name = this:simple_verb_name(code_name);
+header = (((((prefix + " OBJ_: ") + tostr(object)) + " OBJ_NAME_: ") + object.name) + " CODE_NAME_: ") + code_name;
+header = header + this:verb_status(object, code_name);
+player:notify(header);
+return;
+"Amy 11/95";
+"Amy 7/96: Removed code needed only for MOOSE for this version";
+.
+
+@verb $macmoose_utils:"new_session" this none this
+@program $macmoose_utils:new_session
+"Last modified by jaime (#2) Wed Jul 17 11:11:58 1996 EDT.";
+if (caller != #0)
+  return E_PERM;
+endif
+set_task_perms(caller_perms());
+moosep = 0;
+prefix = ((spot = "PREFIX_:" in args) && (spot < length(args))) ? args[spot + 1] | this.default_prefix;
+result = (((((((((prefix + " MOOSEP_: ") + tostr(moosep)) + " SERVER_VERSION_: ") + server_version()) + " MACMOOSE_UTILS_VERSION_: ") + this.version) + " PROG_: ") + tostr(player.programmer)) + " WIZARD_: ") + tostr(player.wizard);
+player:notify(result);
+return;
+.
+
+@verb $macmoose_utils:"verb_status" this none this rx
+@program $macmoose_utils:verb_status
+"Syntax: verb_status(<object>, <vname>)";
+"Last modified by jaime (#2) Tue Nov 19 17:17:35 1996 EST.";
+if (caller != this)
+  return E_PERM;
+endif
+set_task_perms(caller_perms());
+"This verb relies on being !d";
+object = args[1];
+vname = args[2];
+result = "";
+verb_loc = $object_utils:has_verb(object, vname);
+if (verb_loc)
+  if (verb_loc[1] != object)
+    result = (result + " VERB_STATUS_: EXISTS_ON_PARENT ") + tostr(verb_loc[1]);
+    result = (result + " VERB_PARENT_NAME_: ") + verb_loc[1].name;
+  else
+    result = result + " VERB_STATUS_: EXISTS";
+  endif
+  result = result + $macmoose_utils:verb_info_and_args(verb_loc[1], vname);
+  vi = verb_info(object, vname);
+  changeable = (player == vi[1]) || $perm_utils:controls(player, object);
+  result = (result + " VERB_CHANGEABLE_: ") + (changeable ? "1" | "0");
+else
+  "Doesn't exist";
+  status = $perm_utils:controls(player, object) ? "COULD_DECLARE" | "CANT_DECLARE";
+  result = (result + " VERB_STATUS_: ") + status;
+endif
+return result;
+"Amy 11/95";
+"Amy  7/96: Removed code needed for MOOSE from this version";
+.
+
+@verb $macmoose_utils:"list_code" this none this rx
+@program $macmoose_utils:list_code
+"Syntax: list_code(<keywordvalue argument pairs";
+"Keywords accepted:";
+"PREFIX_: <output prefix>";
+"           defaults to this.default_prefix";
+"CODE_TYPE_: tag ignored, because this is not a MOOSE";
+"CODE_NAME_: <name>";
+"OBJ_: <objectnum>";
+"Last modified by jaime (#2) Wed Jul 17 10:53:36 1996 EDT.";
+if (caller != #0)
+  return E_PERM;
+endif
+set_task_perms(caller_perms());
+"This verb relies on being !d";
+prefix = ((spot = "PREFIX_:" in args) && (spot < length(args))) ? args[spot + 1] | this.default_prefix;
+if (!(code_name = this:to_next_tag_str(args, "CODE_NAME_:")))
+  player:notify(prefix + " ERROR_: MISSING_REQUIRED_ARG CODE_NAME");
+  return;
+endif
+"code_name = strsub(code_name, \" - \", \"-\")";
+"Previous line should be needed only for MOOSE";
+if ((spot = "OBJ_:" in args) && (spot < length(args)))
+  object = toobj(args[spot + 1]);
+  if (!valid(object))
+    player:notify(prefix + " ERROR_: OBJECT_NOT_FOUND");
+    return;
+  endif
+else
+  player:notify(prefix + " ERROR_: MISSING_REQUIRED_ARG OBJ");
+  return;
+endif
+player:notify(prefix + $macmoose_utils:verb_status(object, code_name));
+code = verb_code(object, code_name);
+if (typeof(code) == ERR)
+  player:notify((prefix + " ERROR_: CANT_GET_VERB_CODE ") + tostr(code));
+  return;
+endif
+for line in (code)
+  player:notify((prefix + " CODE_LINE_: ") + line);
+endfor
+player:notify(prefix + " CODE_END");
+"Amy 12/95";
+"Amy  7/96: Removed code for MOOSE for this version";
+.
+
+@verb $macmoose_utils:"help" any any any rx
+@program $macmoose_utils:help
+"...this code explicitly relies on being !d in several places...";
+"Amy 12/95: added support for object.help_msg";
+"If you port this to a non-MOOSE, you'll need to remove the assumption that #1.help_msg exists";
+"Modified from #6:help";
+"Last modified by jaime (#2) Mon Aug 12 17:29:22 1996 EDT.";
+if (caller != #0)
+  return E_PERM;
+endif
+set_task_perms(caller_perms());
+topic = this:to_next_tag_str(args, "TOPIC_:");
+prefix = ((spot = "PREFIX_:" in args) && (spot < length(args))) ? args[spot + 1] | this.default_prefix;
+"...find a db that claims to know about `what'...";
+dblist = $code_utils:help_db_list();
+result = $code_utils:help_db_search(topic, dblist);
+if (!result)
+  if (valid(object = $player:match_object(topic)) && object.help_msg)
+    player:notify(prefix + " HELP_START");
+    this:prefix_notify_lines(object.help_msg, player, prefix + " HELP_LINE_:");
+    player:notify(prefix + " HELP_END");
+    return;
+  endif
+  "... note: all of the last-resort stuff...";
+  "... is now located on $help:find_topics/get_topic...";
+  $wiz_utils:missed_help(topic, result);
+  player:notify(prefix + " HELP_START");
+  player:notify(prefix + " ERROR_: HELP_NOT_FOUND");
+elseif (result[1] == $ambiguous_match)
+  $wiz_utils:missed_help(topic, result);
+  player:notify_lines(tostr(prefix, " HELP_LINE_: Sorry, but the topic-name `", topic, "' is ambiguous.  I don't know which of the following topics you mean:"));
+  for x in ($string_utils:columnize($help:sort_topics(result[2]), 3, 60))
+    player:notify(tostr(prefix, " HELP_LINE_: ", "   ", x));
+  endfor
+  player:notify(prefix + " HELP_END");
+else
+  help = result[1];
+  topic = result[2];
+  player:notify(prefix + " HELP_START");
+  if (topic != topic)
+    player:notify(tostr(prefix, "HELP_LINE_: Showing help on `", topic, "':"));
+    player:notify(prefix + "HELP_LINE_: ----");
+  endif
+  dblist = dblist[1 + (help in dblist)..length(dblist)];
+  if (1 == (text = help:get_topic(topic, dblist)))
+    "...get_topic took matters into its own hands...";
+  elseif (text)
+    "...these can get long...";
+    for line in ((typeof(text) == LIST) ? text | {text})
+      if (typeof(line) != STR)
+        player:notify(prefix + " HELP_LINE_: Odd results from help -- complain to a wizard.");
+      else
+        player:notify((prefix + " HELP_LINE_: ") + line);
+      endif
+      $command_utils:suspend_if_needed(0);
+    endfor
+  else
+    player:notify(prefix + " HELP_START");
+    player:notify(tostr((prefix + " HELP_LINE_:") + "Help DB ", help, " thinks it knows about `", topic, "' but something's messed up."));
+    player:notify(tostr((prefix + " HELP_LINE_: ") + "Tell ", help.owner.wizard ? "" | tostr(help.owner.name, " (", help.owner, ") or "), "a wizard."));
+  endif
+  player:notify(prefix + " HELP_END");
+endif
+"Amy  7/96: removed code needed for MOOSE from this version";
+"Amy  8/96: added HELP_START token to help scrolling";
+.
+
+@verb $macmoose_utils:"prefix_notify_lines" this none this
+@program $macmoose_utils:prefix_notify_lines
+"Last modified by jaime (#2) Mon Mar 11 14:35:29 1996 EST.";
+if (caller != this)
+  return E_PERM;
+endif
+lines = args[1];
+who = args[2];
+prefix = args[3];
+if (typeof(lines) != LIST)
+  lines = {lines};
+endif
+for line in (lines)
+  who:notify(tostr(prefix, " ", line));
+endfor
+"Amy 12/95";
+.
+
+@verb $macmoose_utils:"declare_code" this none this rx
+@program $macmoose_utils:declare_code
+"Syntax: list_code(<keyword/value argument pairs";
+"Keywords accepted:";
+"PREFIX_: <output prefix>";
+"           defaults to this.default_prefix";
+"CODE_TYPE_: tag ignored, because this is not a MOOSE";
+"CODE_NAME_: <name>";
+"OBJ_: <objectnum>";
+"VERB_DOBJ_: <dobj; defaults to none>";
+"VERB_PREP_: <prep; defaults to none>";
+"VERB_IOBJ_: <iobj; defaults to none>";
+"PERMS_: <verb perms; defaults to rxd>";
+"OWNER_: <code owner; defaults to player>";
+"Returns:";
+"<prefix> DECLARE_CODE_: <boolean success value>";
+"Other possible values returned: ";
+"<prefix> ERROR_: MISSING_REQUIRED_ARG <OBJ/CODE_NAME>";
+"<prefix> ERROR_: OBJECT_NOT_FOUND";
+"<prefix> ERROR_: ALREADY_DEFINED";
+"<prefix> ERROR_: PERMISSION_DENIED";
+"<prefix> ERROR_: UNEXPECTED_ERROR";
+"Last modified by jaime (#2) Tue Nov 19 17:32:21 1996 EST.";
+if (caller != #0)
+  return E_PERM;
+endif
+set_task_perms(caller_perms());
+"This verb relies on being !d";
+"SORT OUT VALUES FROM ARGS";
+prefix = ((spot = "PREFIX_:" in args) && (spot < length(args))) ? args[spot + 1] | this.default_prefix;
+owner = ((spot = "OWNER_:" in args) && (spot < length(args))) ? args[spot + 1] | player;
+verb_dobj = ((spot = "VERB_DOBJ_:" in args) && (spot < length(args))) ? args[spot + 1] | this.default_verb_dobj;
+verb_prep = (spot = this:to_next_tag_str(args, "VERB_PREP_:")) ? spot | this.default_verb_prep;
+verb_iobj = ((spot = "VERB_IOBJ_:" in args) && (spot < length(args))) ? args[spot + 1] | this.default_verb_iobj;
+code_args = {verb_dobj, verb_prep, verb_iobj};
+spot = "PERMS_:" in args;
+if (!spot)
+  perms = "rxd";
+else
+  if ((spot == length(args)) || match(args[spot + 1], "_:$"))
+    perms = "";
+  else
+    perms = args[spot + 1];
+  endif
+endif
+code_name = this:to_next_tag_str(args, "CODE_NAME_:");
+if (!code_name)
+  player:notify(prefix + " ERROR_: MISSING_REQUIRED_ARG CODE_NAME");
+  player:notify(prefix + " DECLARE_CODE_: 0");
+  return;
+endif
+if ((spot = "OBJ_:" in args) && (spot < length(args)))
+  object = toobj(args[spot + 1]);
+  if (!valid(object))
+    player:notify(prefix + " ERROR_: OBJECT_NOT_FOUND");
+    player:notify(prefix + " DECLARE_CODE_: 0");
+    return;
+  endif
+else
+  player:notify(prefix + " ERROR_: MISSING_REQUIRED_ARG OBJ");
+  player:notify(prefix + " DECLARE_CODE_: 0");
+  return;
+endif
+"DECLARE VERB";
+if (!$perm_utils:controls(player, object))
+  player:notify(prefix + " ERROR_: PERMISSION_DENIED");
+  player:notify(prefix + " DECLARE_CODE_: 0");
+  return;
+endif
+result = add_verb(object, {owner, perms, code_name}, code_args);
+if (typeof(result) == ERR)
+  if (result == E_PERM)
+    player:notify(prefix + " ERROR_: PERMISSION_DENIED");
+  elseif (result == E_INVARG)
+    player:notify(prefix + " ERROR_: INVALID_ARGUMENT");
+  else
+    player:notify(prefix + " ERROR_: UNEXPECTED_ERROR");
+  endif
+  player:notify(prefix + " DECLARE_CODE_: 0");
+  return;
+endif
+"Verb added successfully";
+player:notify(prefix + " DECLARE_CODE_: 1");
+"Amy 12/95";
+.
+
+@verb $macmoose_utils:"to_next_tag" this none this rxd $hacker
+@program $macmoose_utils:to_next_tag
+"Syntax: to_next_tag(list, tag)";
+"returns a list of all args from after TAG_: to next TAG_: or end of args";
+"Last modified by jaime (#2) Mon Mar 11 14:35:34 1996 EST.";
+data = args[1];
+tag = args[2];
+result = {};
+if ((!(spot = tag in data)) && (spot < length(data)))
+  return 0;
+endif
+while (spot < length(data))
+  $command_utils:suspend_if_needed(0);
+  spot = spot + 1;
+  if (match(data[spot], "_:$"))
+    return result;
+  endif
+  result = {@result, data[spot]};
+endwhile
+return result;
+"Amy 1295";
+.
+
+@verb $macmoose_utils:"set_code" this none this rx
+@program $macmoose_utils:set_code
+"Syntax: set_code(<keyword/value argument pairs";
+"Keywords accepted:";
+"PREFIX_: <output prefix>";
+"           defaults to this.default_prefix";
+"CODE_TYPE_: tag ignored, because this is not a MOOSE";
+"CODE_NAME_: <name>";
+"OBJ_: <objectnum>";
+"VALUE_: <text of code, with / separating lines and real /'s escaped with \\>";
+"VERB_DOBJ_: <dobj; defaults to none>";
+"VERB_PREP_: <prep; defaults to none; might be multiple words>";
+"VERB_IOBJ_: <iobj; defaults to none>";
+"PERMS_: <verb perms; defaults to rxd>";
+"OWNER_: <code owner; defaults to player>";
+"Last modified by jaime (#2) Mon Jul 22 00:57:53 1996 EDT.";
+if (caller != #0)
+  return E_PERM;
+endif
+set_task_perms(caller_perms());
+"This verb relies on being !d";
+prefix = ((spot = "PREFIX_:" in args) && (spot < length(args))) ? args[spot + 1] | this.default_prefix;
+code_name = this:to_next_tag_str(args, "CODE_NAME_:");
+if (!code_name)
+  player:notify(prefix + " ERROR_: MISSING_REQUIRED_ARG CODE_NAME");
+  return;
+endif
+if ((spot = "OBJ_:" in args) && (spot < length(args)))
+  object = toobj(args[spot + 1]);
+  if (!valid(object))
+    player:notify(prefix + " ERROR_: OBJECT_NOT_FOUND");
+    return;
+  endif
+else
+  player:notify(prefix + " ERROR_: MISSING_REQUIRED_ARG OBJ");
+  return;
+endif
+if ("VALUE_:" in args)
+  valuep = 1;
+  check_quotesp = 1;
+  value = this:list_from_tokens(args, "VALUE_:", check_quotesp);
+  if ((length(value) > 1) && (value[1] == "_QUOTE_ERROR"))
+    for error_msg in (value[2..length(value)])
+      player:notify((prefix + " TEXT_COLOR_: RED FEEDBACK_: ") + error_msg);
+    endfor
+    player:notify(prefix + " SET_CODE_: CODE_CHANGED? 0");
+    return;
+  endif
+else
+  valuep = 0;
+endif
+if ((("VERB_DOBJ_:" in args) || ("VERB_PREP_:" in args)) || ("VERB_IOBJ_:" in args))
+  "There is an argument change";
+  old_args = verb_args(object, code_name);
+  if (typeof(old_args) == ERR)
+    player:notify((prefix + " ERROR_: ") + tostr(old_args));
+    return;
+  endif
+  new_args = old_args;
+  new_args[1] = ((spot = "VERB_DOBJ_:" in args) && (spot < length(args))) ? args[spot + 1] | new_args[1];
+  new_args[2] = ((spot = "VERB_PREP_:" in args) && (spot < length(args))) ? this:to_next_tag_str(args, "VERB_PREP_:") | new_args[2];
+  new_args[3] = ((spot = "VERB_IOBJ_:" in args) && (spot < length(args))) ? args[spot + 1] | new_args[3];
+  args_result = set_verb_args(object, code_name, new_args);
+  if (typeof(args_result) == ERR)
+    player:notify((prefix + " ERROR_: CANT_CHANGE_ARGS ") + tostr(args_result));
+  else
+    player:notify(prefix + " VERB_ARGS_CHANGED? 1");
+    player:notify(prefix + " FEEDBACK_: Verb arguments changed.");
+  endif
+endif
+if (("PERMS_:" in args) || ("OWNER_:" in args))
+  old_info = verb_info(object, code_name);
+  if (typeof(old_info) == ERR)
+    player:notify((prefix + " ERROR_: ") + tostr(old_info));
+    return;
+  endif
+  new_info = old_info;
+  if (spot = "PERMS_:" in args)
+    if ((spot == length(args)) || match(args[spot + 1], "_:$"))
+      new_info[2] = "";
+    else
+      new_info[2] = args[spot + 1];
+    endif
+  endif
+  if ((spot = "OWNER_:" in args) && (spot < length(args)))
+    new_info[1] = toobj(args[spot + 1]);
+  endif
+  info_result = set_verb_info(object, code_name, new_info);
+  if (typeof(info_result) == ERR)
+    player:notify((prefix + " ERROR_: CANT_CHANGE_INFO ") + tostr(info_result));
+    player:notify(prefix + " TEXT_COLOR_: RED FEEDBACK_: Can't change verb permissions.");
+  else
+    player:notify(prefix + " VERB_INFO_CHANGED? 1");
+    player:notify(prefix + " FEEDBACK_: Verb permissions changed.");
+  endif
+endif
+if (valuep)
+  result = set_verb_code(object, code_name, value);
+  if (result || (typeof(result) == ERR))
+    result = (typeof(result) == LIST) ? result | {result};
+    for item in (result)
+      player:notify((prefix + " TEXT_COLOR_: RED FEEDBACK_: ") + tostr(item));
+    endfor
+    player:notify(prefix + " TEXT_COLOR_: RED FEEDBACK_: Verb not compiled.");
+    player:notify(prefix + " SET_CODE_: CODE_CHANGED? 0");
+    return;
+  endif
+  player:notify(prefix + " SET_CODE_: CODE_CHANGED? 1");
+  player:notify(prefix + " FEEDBACK_: Verb changed.");
+endif
+"Amy 12/95";
+.
+
+@verb $macmoose_utils:"to_next_tag_str" this none this rxd $hacker
+@program $macmoose_utils:to_next_tag_str
+"Syntax: to_next_tag_str(tokens, tag)";
+"returns a string from after TAG_: to next TAG_: or end of args";
+"Last modified by jaime (#2) Mon Jun  3 13:52:35 1996 EDT.";
+tokens = args[1];
+tag = args[2];
+result = $macmoose_utils:to_next_tag(tokens, tag);
+$command_utils:suspend_if_needed(0);
+return result ? this:reassemble_line(result) | "";
+"Amy 12/95";
+.
+
+@verb $macmoose_utils:"prop_object" this none this rx
+@program $macmoose_utils:prop_object
+"Syntax: set_context(list <{object_name, prop}, object <context>>)";
+"Last modified by jaime (#2) Wed May  7 13:01:54 1997 EDT.";
+c = caller_perms();
+set_task_perms((c == #-1) ? player | c);
+object_name = args[1][1];
+prop = args[1][2];
+if ((length(args) < 2) || (args[2] == {}))
+  context = player;
+  "Context defaults to player";
+else
+  context = args[2];
+endif
+if (object_name in {$failed_match, $ambiguous_match})
+  return {0, object_name};
+endif
+if (object_name in {"me", "this", "context", "each"})
+  return {1, context};
+endif
+if (object_name == "player")
+  return {1, player};
+endif
+if ($object_utils:isa(context, $player))
+  who = context;
+else
+  who = player;
+endif
+if ($object_utils:isa(context, $room))
+  where = context;
+else
+  where = context.location;
+endif
+if ((typeof(object_name) == OBJ) || (object_name in {"player", "caller"}))
+  object = object_name;
+elseif (object_name in {"my", "this"})
+  object_name = context;
+  object = context;
+else
+  object = $string_utils:match_object(tostr(object_name), where, who);
+  if (object in {$failed_match, $ambiguous_match})
+    return {0, object};
+  endif
+endif
+return {1, object};
+"Amy 7/11/94";
+.
+
+@verb $macmoose_utils:"prop_info" this none this rx
+@program $macmoose_utils:prop_info
+"Syntax: prop_info(<keyword/value argument pairs>)";
+"Keywords accepted:";
+"PREFIX_: <output prefix>";
+"           defaults to this.default_prefix";
+"PROP_REF_: <prop ref in MOOSE or MOO format>";
+"Last modified by jaime (#2) Wed Jul 17 11:07:21 1996 EDT.";
+if (caller != #0)
+  return E_PERM;
+endif
+set_task_perms(caller_perms());
+"This verb relies on being !d";
+"Ensure proper input format.";
+prefix = ((spot = "PREFIX_:" in args) && (spot < length(args))) ? args[spot + 1] | this.default_prefix;
+if ((spot = "PROP_REF_:" in args) && (spot < length(args)))
+  ref = this:to_next_tag(args, "PROP_REF_:");
+  if (!(propref = this:parse_propref(ref)))
+    player:notify(prefix + " ERROR_: NOT_A_PROP_REF");
+    return;
+  endif
+  "Parse object";
+  if (propref[1][1] == "#")
+    object = toobj(propref[1]);
+    if (!valid(object))
+      player:notify(prefix + " ERROR_: OBJECT_NOT_FOUND");
+      return;
+    endif
+  elseif (propref[1] in {"this", "me", "my", "player", "context"})
+    object = player;
+  else
+    if (!valid(object = player:my_match_object(propref[1])))
+      player:notify(prefix + " ERROR_: OBJECT_NOT_FOUND");
+      return;
+    endif
+  endif
+  if (length(propref[2]) > 1)
+    propref = this:resolve_compound_propref(propref, player);
+  endif
+  prop_name = propref[2][1];
+elseif ((oname = this:to_next_tag_str(args, "OBJ_:")) && (prop_name = this:to_next_tag_str(args, "PROP_NAME_:")))
+  "Object and prop name supplied separately";
+  object = player:my_match_object(oname);
+  if (!valid(object))
+    player:notify(prefix + " ERROR_: OBJECT_NOT_FOUND");
+    return;
+  endif
+else
+  "No property name supplied";
+  player:notify(prefix + " ERROR_: MISSING_REQUIRED_ARG PROP_REF");
+endif
+header = (((((prefix + " OBJ_: ") + tostr(object)) + " OBJ_NAME_: ") + object.name) + " PROP_NAME_: ") + prop_name;
+if (!$object_utils:has_property(object, prop_name))
+  header = (header + " PROP_STATUS_: ") + ($perm_utils:controls(player, object) ? "COULD_DECLARE" | "CANT_DECLARE");
+  player:notify(header);
+  return;
+else
+  header = header + " PROP_STATUS_: EXISTS";
+endif
+if (prop_name in $code_utils.builtin_props)
+  "Is this the right thing?";
+  if (prop_name in {"r", "f", "w"})
+    perms = "rc";
+    owner = object.owner;
+  else
+    owner = #2;
+    perms = "r";
+  endif
+else
+  info = property_info(object, prop_name);
+  if (typeof(info) == ERR)
+    player:notify((header + " ERROR_: CANT_GET_PROP_INFO ") + tostr(info));
+    return;
+  endif
+  owner = info[1];
+  perms = info[2];
+endif
+header = (header + " PROP_OWNER_: ") + tostr(owner);
+header = (header + " PROP_PERMS_: ") + perms;
+changeable = $perm_utils:controls(player, owner);
+header = (header + " PROP_CHANGEABLE_: ") + tostr(changeable);
+value = object.(prop_name);
+if (typeof(value) == ERR)
+  player:notify((header + " ERROR_: CANT_GET_PROP_VALUE ") + tostr(value));
+  return;
+endif
+header = (header + " PROP_VALUE_: ") + $string_utils:print(value);
+player:notify(header);
+return;
+"Amy  1/96";
+"Amy  7/96: removed code needed for MOOSE from this version";
+.
+
+@verb $macmoose_utils:"prop_eval" this none this rx
+@program $macmoose_utils:prop_eval
+"Syntax: prop_eval(string <property reference>, object <context>)";
+"Returns {succcess_value, result}";
+"Last modified by jaime (#2) Wed Jul 17 11:11:39 1996 EDT.";
+set_task_perms(caller_perms());
+context = {@args, player}[2];
+"Context defaults to player";
+eval_text = tostr("this=", context, "; return ", args[1], ";");
+result = $code_utils:eval_d(eval_text);
+if (typeof(result[2]) == ERR)
+  return {0, result[2]};
+else
+  return result;
+endif
+"Amy 1/95 -- Made return 0 if result is E_PROPNF";
+"This will not do the right thing if the content of your property is";
+"Legitimatelly E_PROPNF!";
+.
+
+@verb $macmoose_utils:"prop_resolve_internal" this none this
+@program $macmoose_utils:prop_resolve_internal
+"Syntax: prop_resolve(list <{object_name, prop}>, object <context>)";
+"Returns {success_value, value or error message}";
+"Last modified by jaime (#2) Wed May  7 12:59:42 1997 EDT.";
+c = caller_perms();
+set_task_perms((c == #-1) ? player | c);
+prop = args[1][2];
+context = {@args, player}[2];
+"Context defaults to player";
+object_found = this:prop_object(args[1], context);
+if (object_found[1])
+  object = object_found[2];
+else
+  "Object was not found";
+  return object_found;
+endif
+if (typeof(prop) == LIST)
+  "Handle compound of form {name, {ref1, ref2, ref3}}";
+  result = {1, object};
+  for ref in (prop)
+    result = this:prop_resolve_internal({result[2], ref}, context);
+    if ((!result[1]) || (typeof(result[2]) == ERR))
+      return {0, result[2]};
+    endif
+  endfor
+  return result;
+endif
+"Not a compound";
+prop_ref = (tostr(object) + ".") + this:trim_prop(prop);
+result = this:prop_eval(prop_ref, context);
+if ((!result[1]) || typeof(result[2] == ERR))
+  return {0, result[2]};
+else
+  return result;
+endif
+"Amy  7/94";
+"Amy  7/94: Moved part of code into prop_object verb";
+"Amy  2/95: Fixed set_task_perms to caller_perms rather than player!";
+"Amy  6/95: Made handle compound proprefs recursively";
+.
+
+@verb $macmoose_utils:"prop_resolve" this none this
+@program $macmoose_utils:prop_resolve
+"Syntax: prop_resolve(list <{object_name, prop}>, object <context>)";
+"Returns the value, or registers an error and returns $moose_error";
+"Last modified by jaime (#2) Wed May  7 13:00:41 1997 EDT.";
+c = caller_perms();
+set_task_perms((c == #-1) ? player | c);
+prop = args[1][2];
+context = {@args, player}[2];
+"Context defaults to player";
+object_found = this:prop_object(args[1], context);
+if (object_found[1])
+  object = object_found[2];
+else
+  "Object was not found";
+  player:tell("Can't find an object named " + tostr(args[1][1]));
+  return;
+endif
+if (typeof(prop) == LIST)
+  "Handle compound of form {name, {ref1, ref2, ref3}}";
+  result = {1, object};
+  for ref in (prop)
+    last = result[2];
+    result = this:prop_resolve_internal({result[2], ref}, context);
+    if ((!result[1]) || (typeof(result[2]) == ERR))
+      if (result[2] == E_PERM)
+        error_msg = {"Permission denied.", ((("The property " + $string_utils:print(ref)) + " of object '") + $string_utils:nn(last)) + "' is not readable by you."};
+      else
+        error_msg = ((("Can't find a property " + $string_utils:print(ref)) + " of an object '") + $string_utils:nn(last)) + "'.";
+      endif
+      player:tell(error_msg);
+      return;
+    endif
+  endfor
+  return result[2];
+endif
+"Not a compound";
+if (typeof(prop) != STR)
+  "Amy 10/95--are there situations in which this should return an error?";
+  prop = tostr(prop);
+endif
+prop_ref = (tostr(object) + ".") + this:trim_prop(prop);
+result = this:prop_eval(prop_ref, context);
+if ((!result[1]) || typeof(result[2] == ERR))
+  if (result[2] == E_PERM)
+    error_msg = {"Permission denied.", ((("The property " + $string_utils:print(ref)) + " of object '") + result[2]) + "' is not readable by you."};
+  else
+    error_msg = ((("Can't find a property '" + prop) + "' of an object '") + tostr(args[1][1])) + "'.";
+  endif
+  player:tell(error_msg);
+  return;
+else
+  return result[2];
+endif
+"Amy  7/94";
+"Amy  7/94: Moved part of code into prop_object verb";
+"Amy  2/95: Fixed set_task_perms to caller_perms rather than player!";
+"Amy  6/95: Made handle compound proprefs recursively";
+.
+
+@verb $macmoose_utils:"find_propref_object" this none this rxd $hacker
+@program $macmoose_utils:find_propref_object
+"Syntax: find_propref_object(list <property reference>)";
+"Returns a two-valued list: {string <object of ref>, list <rest of ref>}";
+"i.e. 'the big dog's friend's color' (input as a list of tokens) ==> ";
+"{'the big dog', {'friend's', 'color'}}";
+"Last modified by jaime (#2) Wed Sep 18 11:14:37 1996 EDT.";
+ref = args[1];
+if ((!ref) || (ref && ((typeof(ref) != LIST) || (typeof(ref[1]) != STR))))
+  return 0;
+endif
+"Remove surrounding parentheses -- Amy 5/96";
+while ((ref[1] == "(") && (ref[length(ref)] == ")"))
+  ref = ref[2..length(ref) - 1];
+endwhile
+if (ref[1] in {"my", "\"my\""})
+  return {ref[1], ref[2..length(ref)]};
+endif
+object = "";
+while (ref)
+  if (typeof(ref[1]) != STR)
+    ref[1] = tostr(ref[1]);
+  endif
+  if ((dot = index(ref[1], ".")) && (dot < length(ref[1])))
+    object = object + ref[1][1..dot - 1];
+    result = {object, {ref[1][dot + 1..length(ref[1])]}};
+    return result;
+  elseif ((pos = match(ref[1], "'s\"?,? *$")) && (length(ref) > 1))
+    object = object + ref[1][1..pos[1] - 1];
+    result = {object, ref[2..length(ref)]};
+    return result;
+  elseif ((pos = match(ref[1], "s'\"?,? *$")) && (length(ref) > 1))
+    "Handle s' case";
+    object = object + ref[1][1..pos[1]];
+    result = {object, ref[2..length(ref)]};
+    return result;
+  else
+    "Multiple word object name";
+    object = (object + ref[1]) + " ";
+    ref = listdelete(ref, 1);
+  endif
+endwhile
+"If you get here, it's not a well-formed property reference";
+return 0;
+"Amy 1/95 -- Removed a call to change me or my; that should be done elsewhere.";
+.
+
+@verb $macmoose_utils:"trim_prop" this none this rxd $hacker
+@program $macmoose_utils:trim_prop
+"Syntax: trim_prop(string <prop>)";
+"Removes leading ., if any.";
+"Used to distinguish a property from a variable of the same name";
+"Last modified by jaime (#2) Mon Mar 11 14:35:45 1996 EST.";
+prop = args[1];
+if ((length(prop) > 1) && (prop[1] == "."))
+  prop = prop[2..length(prop)];
+endif
+return prop;
+"Amy  6/95";
+"Amy  6/95: Made no longer remove quotes";
+.
+
+@verb $macmoose_utils:"parse_propref" this none this rxd $hacker
+@program $macmoose_utils:parse_propref
+"Copied from Property Utilities (#145):parse_propref by Amy (#78) Fri Jan  5 18:08:14 1996 EST";
+"Syntax: parse_propref(list <MOOSE property reference>)";
+"Given a MOOSE or MOO property reference,";
+"Returns a list: {object, {property, subproperty}}";
+"Returns 0 if this is not a well formed property reference.";
+"";
+"Note: in the compiler, prop references of the MOO form foo.bar";
+"Are compiled by $compiler:vars_for_dot_syntax";
+"Which is called from $compiler:variable_values_line";
+"Last modified by jaime (#2) Mon Mar 11 14:35:46 1996 EST.";
+ref = args[1];
+result = "";
+split_ref = this:find_propref_object(ref);
+if (!split_ref)
+  "Not a valid property reference";
+  return 0;
+endif
+object = split_ref[1];
+ref = split_ref[2];
+prop = {};
+while (length(ref) > 1)
+  if (spos = match(ref[1], "'s\"?,? *$"))
+    prop = {@prop, this:trim_prop(ref[1][1..spos[1] - 1])};
+    ref = listdelete(ref, 1);
+  elseif (apos = match(ref[1], "s'\"?,? *$"))
+    "Handle s' forms";
+    "My cousins' car ==> this.cousins.car";
+    prop = {@prop, this:trim_prop(ref[1][1..apos[1]])};
+    ref = listdelete(ref, 1);
+  else
+    "Ill-formed prop ref: token which is not the last is not possessive.";
+    return 0;
+  endif
+endwhile
+if (!ref)
+  "Ill-formed prop ref: Nothing after the my or last possessive.";
+  return 0;
+endif
+"One token left.";
+prop = {@prop, this:trim_prop(ref[1])};
+if (!(object && prop))
+  result = 0;
+else
+  result = {object, prop};
+endif
+return result;
+"Amy  7/94";
+"Amy  6/95: Changed output from from {object, prop.subprop}";
+"           to {object, {prop, subprop}}";
+"Amy  6/95: Made remove quotes around parts of prop";
+.
+
+@verb $macmoose_utils:"resolve_compound_propref" this none this rxd $hacker
+@program $macmoose_utils:resolve_compound_propref
+"Syntax: resolve_compound_propref({object <object>, list <property_names>}, object <context>";
+"Last modified by jaime (#2) Wed May  7 13:05:00 1997 EDT.";
+c = caller_perms();
+set_task_perms((c == #-1) ? player | c);
+object = args[1][1][1];
+propnames = args[1][2];
+context = args[2];
+if (length(propnames) <= 1)
+  return args[1];
+endif
+final_pname = propnames[length(propnames)];
+propnames = listdelete(propnames, length(propnames));
+new_object = this:prop_resolve({object, propnames}, context);
+if (typeof(new_object) != OBJ)
+  player:tell("Error in resolving property.");
+  return;
+endif
+result = {new_object, {final_pname}};
+return result;
+"Amy 12/95";
+.
+
+@verb $macmoose_utils:"declare_prop" this none this rx
+@program $macmoose_utils:declare_prop
+"Syntax: list_prop(<keyword/value argument pairs";
+"Keywords accepted:";
+"PREFIX_: <output prefix>";
+"           defaults to this.default_prefix";
+"PROP_NAME_: <name>";
+"OBJ_: <objectnum>";
+"PERMS_: <verb perms; defaults to rc>";
+"OWNER_: <prop owner; defaults to player>";
+"VALUE_: <value; defaults to 0>";
+"Returns:";
+"<prefix> DECLARE_PROP_: <boolean success value>";
+"Other possible values returned: ";
+"<prefix> ERROR_: MISSING_REQUIRED_ARG <OBJ/PROP_NAME>";
+"<prefix> ERROR_: OBJECT_NOT_FOUND";
+"<prefix> ERROR_: ALREADY_DEFINED";
+"<prefix> ERROR_: BAD_PROP_NAME";
+"<prefix> ERROR_: PERMISSION_DENIED";
+"<prefix> ERROR_: UNEXPECTED_ERROR";
+"Last modified by jaime (#2) Tue Nov 19 17:32:35 1996 EST.";
+if (caller != #0)
+  return E_PERM;
+endif
+set_task_perms(caller_perms());
+"This verb relies on being !d";
+"SORT OUT VALUES FROM ARGS";
+prefix = ((spot = "PREFIX_:" in args) && (spot < length(args))) ? args[spot + 1] | this.default_prefix;
+owner = ((spot = "OWNER_:" in args) && (spot < length(args))) ? args[spot + 1] | player;
+spot = "PERMS_:" in args;
+if (!spot)
+  perms = "rc";
+else
+  if ((spot == length(args)) || match(args[spot + 1], "_:$"))
+    perms = "";
+  else
+    perms = args[spot + 1];
+  endif
+endif
+value = ((spot = "VALUE_:" in args) && (spot < length(args))) ? this:coerce(this:to_next_tag_str(args, "VALUE_:")) | 0;
+if ((spot = "PROP_NAME_:" in args) && (spot < length(args)))
+  prop_name = args[spot + 1];
+else
+  player:notify(prefix + " ERROR_: MISSING_REQUIRED_ARG PROP_NAME");
+  player:notify(prefix + " DECLARE_PROP_: 0");
+  return;
+endif
+if ((spot = "OBJ_:" in args) && (spot < length(args)))
+  object = toobj(args[spot + 1]);
+  if (!valid(object))
+    player:notify(prefix + " ERROR_: OBJECT_NOT_FOUND");
+    player:notify(prefix + " DECLARE_PROP_: 0");
+    return;
+  endif
+else
+  player:notify(prefix + " ERROR_: MISSING_REQUIRED_ARG OBJ");
+  player:notify(prefix + " DECLARE_PROP_: 0");
+  return;
+endif
+if ($object_utils:has_property(object, prop_name))
+  player:notify(prefix + " ERROR_: ALREADY_DEFINED");
+  player:notify(prefix + " DECLARE_PROP_: 0");
+  return;
+endif
+"if prop_name ends in _txt or _text and the value is 0, set the beginning value to {}";
+if (value == 0)
+  val_set = 0;
+else
+  val_set = 1;
+endif
+text_strs = {"_text", "_txt"};
+for text_str in (text_strs)
+  if (val_set == 0)
+    indx = index(prop_name, text_str);
+    if (indx != 0)
+      if (((length(text_str) + indx) - 1) == length(prop_name))
+        value = {};
+        val_set = 1;
+      endif
+    endif
+  endif
+endfor
+result = add_property(object, prop_name, value, {owner, perms});
+if (typeof(result) == ERR)
+  "Try prop_to_parent";
+  result = this:prop_to_parent(object, prop_name, value, {owner, perms});
+endif
+if (typeof(result) == ERR)
+  player:notify((prefix + " ERROR_: CANT_DECLARE_PROP ") + tostr(result));
+  player:notify(prefix + " DECLARE_PROP_: 0");
+  return;
+endif
+"Property added successfully";
+player:notify(prefix + " DECLARE_PROP_: 1");
+"Amy 12/95";
+.
+
+@verb $macmoose_utils:"prop_to_parent" this none this
+@program $macmoose_utils:prop_to_parent
+"Last modified by jaime (#2) Tue Nov 19 17:30:41 1996 EST.";
+set_task_perms(caller_perms());
+"Syntax: prop_to_parent(objnum <parent>, string <propname>, any <initial_value>, list <propinfo> [, boolean <preserve_child_permsP>])";
+"Adds property propname to object parent, when it is already defined on";
+"one or more children of that object.  Preserves the property's value";
+"on the children.  Preserves the property info (owner and permissions)";
+"on the children, unless the optional last argument preserve_child_permsP";
+"is set to false, in which case the new parent property property info";
+"override the child property info.";
+parent = args[1];
+propname = args[2];
+initial_value = args[3];
+propinfo = args[4];
+"Defaults to preserving permissions on existing slots as they originally were.";
+preserve_child_permsP = {@args, 1}[5];
+"This verb is WIZARDLY";
+if (!$perm_utils:controls(player, parent))
+  return E_PERM;
+elseif ((propinfo[1] != player) && (!player.wizard))
+  return E_PERM;
+endif
+if ($object_utils:has_property(parent, propname))
+  "object already has property";
+  return $no_value;
+endif
+conflicts = $object_utils:descendants_with_property_suspended(parent, propname);
+if (!conflicts)
+  "No property conflicts.  Adding property.";
+  return add_property(parent, propname, initial_value, propinfo);
+endif
+"Find an unused property name";
+seeking_prop = 1;
+$command_utils:suspend_if_needed(0);
+while (seeking_prop)
+  temp_prop = "temp_for_prop_to_parent" + tostr(random(1000));
+  seeking_prop = $object_utils:descendants_with_property_suspended(parent, temp_prop);
+endwhile
+result = add_property(parent, temp_prop, {}, {player, ""});
+for conflict in (conflicts)
+  $command_utils:suspend_if_needed(0);
+  for object in ({conflict, @$object_utils:descendants(conflict)})
+    object.(temp_prop) = {object.(propname), property_info(object, propname)};
+  endfor
+endfor
+for conflict in (conflicts)
+  $command_utils:suspend_if_needed(0);
+  delete_property(conflict, propname);
+endfor
+add_property(parent, propname, initial_value, propinfo);
+"Put values on kids back";
+for conflict in (conflicts)
+  for object in ({conflict, @$object_utils:descendants(conflict)})
+    $command_utils:suspend_if_needed(0);
+    object.(propname) = object.(temp_prop)[1];
+    if (preserve_child_permsP || (!$perm_utils:controls(player, object)))
+      "You must preserve the perms if you don't control the object";
+      set_property_info(object, propname, object.(temp_prop)[2]);
+    endif
+  endfor
+endfor
+delete_property(parent, temp_prop);
+"Amy 8/15/94";
+.
+
+@verb $macmoose_utils:"tokenize" this none this rxd $hacker
+@program $macmoose_utils:tokenize
+"Syntax: tokenize(string <command>)";
+"Adapted from $string_utils:words";
+"This parses input supplied in either program or command line style";
+"Returning a list of tokens";
+"Last modified by jaime (#2) Wed May  7 13:21:11 1997 EDT.";
+rest = args[1];
+special = {"+", "*", "%", "-", "<", ">", "(", ")", "{", "}", ",", "/", "!", "=", "&", "|", "[", "]"};
+"Should these be special?: ! = & |";
+"...trim leading blanks...";
+rest[1..match(rest, "^ *")[2]] = "";
+if (!rest)
+  return {};
+endif
+quote = 0;
+toklist = {};
+token = "";
+operators = "][+*/%<>(){},=+-";
+normal_pattern = (" +%|[" + operators) + "]%|\"%|[[({]";
+in_a_quoted_string_pattern = "%([^\\]%|^%)\"";
+pattern = normal_pattern;
+while (m = match(rest, pattern))
+  if (quote)
+    "... Closing quoted string.  Restore old pattern ...";
+    pattern = normal_pattern;
+    quote = 0;
+    token = token + rest[1..m[2]];
+    if (token != "")
+      toklist = {@toklist, token};
+      token = "";
+    endif
+  else
+    char = rest[m[1]];
+    endchar = rest[m[2]];
+    token = token + rest[1..m[1] - 1];
+    if (char == " ")
+      if (token != "")
+        toklist = {@toklist, token};
+        token = "";
+      endif
+    elseif (char == "\"")
+      "... beginning of quoted string ...";
+      "... within a quoted string nothing is special ...";
+      "... Opening a quoted string.  Set new pattern ...";
+      pattern = in_a_quoted_string_pattern;
+      quote = 1;
+      token = token + "\"";
+    elseif (((char == "/") && token) && (token[length(token)] == "\\"))
+      "Escaped /";
+      "Include / as a separated item";
+      if (length(token) > 1)
+        toklist = {@toklist, token[1..length(token) - 1]};
+      endif
+      toklist = {@toklist, "\\/"};
+      token = "";
+    elseif (char in special)
+      if (token != "")
+        toklist = {@toklist, token};
+      endif
+      toklist = {@toklist, char};
+      token = "";
+    elseif (char == "\\")
+      "... include next char literally if there is one ...";
+      token = token + rest[m[2]];
+      "Bug: seems to be losing backslash in double-backslash";
+    else
+      player:tell("Error: unknown case.");
+    endif
+  endif
+  rest[1..m[2]] = "";
+  $command_utils:suspend_if_needed(0);
+endwhile
+if (rest || token)
+  toklist = {@toklist, token + rest};
+endif
+return toklist;
+"Amy 12/93";
+"Amy  2/94: made it leave in quotes.";
+"Amy  1/95: made split on arithmetic operators and comparative operators";
+"Amy  2/95: made splitting on / an option";
+"Amy  3/95: made leave in commas";
+"Amy 12/95: major simplifications, removing compound operators and split_on_slashP";
+"Amy  1/96: made split on [ and ]";
+"Amy 6/96: major rewrite";
+.
+
+@verb $macmoose_utils:"coerce_list_string" this none this rxd $hacker
+@program $macmoose_utils:coerce_list_string
+"Copied from Parse Utilities (#89):coerce_list by Hacker ($hacker) Mon Mar 20 18:43:20 1995 EST";
+"Syntax: coerce_list(string <text, list as string>)";
+"Convert list as a string to list of possibly other data types";
+"Recursively goes through sub-lists.";
+"Last modified by jaime (#2) Mon Mar 11 14:35:53 1996 EST.";
+text = args[1];
+"Chop off opening {";
+open = match(text, "^ *{");
+text = (open && (length(text) > open[2])) ? text[open[2] + 1..length(text)] | "";
+"Chop off closing }";
+end = rmatch(text, "} *$");
+text = (end && (end[1] > 1)) ? text[1..end[1] - 1] | "";
+text = this:tokenize(text);
+result = {};
+for item_number in [1..length(text)]
+  $command_utils:suspend_if_needed(0);
+  if (!(text[item_number] == ","))
+    if (match(text[item_number], "^{.*}$"))
+      result = {@result, this:coerce_list(text[item_number])};
+    else
+      result = {@result, this:coerce(text[item_number])};
+    endif
+  endif
+endfor
+return result;
+"Amy 10/94";
+"Amy  5/95: Made remove commas in middle of seq; they were getting added as elements to the list";
+.
+
+@verb $macmoose_utils:"coerce" this none this rx
+@program $macmoose_utils:coerce
+"Syntax: coerce(argument)";
+"Last modified by jaime (#2) Mon Mar 11 14:35:53 1996 EST.";
+set_task_perms(caller_perms());
+if (typeof(args[1]) != STR)
+  return args[1];
+  "This function is designed to convert strings to other types.";
+  "If the input is not a string, return it as is.";
+endif
+"Force the argument to be a type other than string, if possible.";
+string = args[1];
+if (!length(string))
+  return string;
+endif
+first = string[1];
+if ((first == "#") && ((result = $code_utils:toobj(string)) != E_TYPE))
+  return result;
+elseif ((0 && (first == "{")) && (result = this:coerce_list_string(string)))
+  return result;
+endif
+result = $code_utils:eval_d(tostr("return ", args[1], ";"));
+"It would be nice if this called eval_env; right now it doesn't";
+if (((args[1] == "") || (result[1] == 0)) || ((typeof(result[2]) == ERR) && (!(args[1] in this.error_codes))))
+  return args[1];
+  "Can't coerce it into anything; return the original";
+else
+  return result[2];
+endif
+"Amy 12/93";
+"Amy  7/95: Fixed bug in how lists are handled";
+.
+
+@verb $macmoose_utils:"set_prop" this none this rx
+@program $macmoose_utils:set_prop
+"Syntax: set_prop(<keyword/value argument pairs";
+"Keywords accepted:";
+"PREFIX_: <output prefix>";
+"           defaults to this.default_prefix";
+"PROP_NAME_: <name>";
+"OBJ_: <objectnum>";
+"VALUE_: <value>";
+"PERMS_: <prop perms; defaults to rc>";
+"Last modified by jaime (#2) Fri Aug  2 14:30:50 1996 EDT.";
+if (caller != #0)
+  return E_PERM;
+endif
+set_task_perms(caller_perms());
+"This verb relies on being !d";
+prefix = ((spot = "PREFIX_:" in args) && (spot < length(args))) ? args[spot + 1] | this.default_prefix;
+if ((spot = "PROP_NAME_:" in args) && (spot < length(args)))
+  prop_name = args[spot + 1];
+else
+  player:notify(prefix + " ERROR_: MISSING_REQUIRED_ARG PROP_NAME");
+  return;
+endif
+if ((spot = "OBJ_:" in args) && (spot < length(args)))
+  object = toobj(args[spot + 1]);
+  if (!valid(object))
+    player:notify(prefix + " ERROR_: OBJECT_NOT_FOUND");
+    return;
+  endif
+else
+  player:notify(prefix + " ERROR_: MISSING_REQUIRED_ARG OBJ");
+  return;
+endif
+if ("VALUE_:" in args)
+  valuep = 1;
+  value = this:to_next_tag_str(args, "VALUE_:");
+  if ((length(value) > 1) && (value[1] == "/"))
+    "Removing leading /";
+    value = value[2..length(value)];
+  endif
+  expect_list = (value && (value[1] == "{")) && (value[length(value)] == "}");
+  value = this:coerce(value);
+  if (expect_list && (typeof(value) != LIST))
+    "We have a list with mismatched {} or commas or quotes";
+    player:notify(prefix + " TEXT_COLOR_: RED FEEDBACK_: Bad list?");
+    player:notify(prefix + " TEXT_COLOR_: RED FEEDBACK_: Maybe a mismatched { or } ?");
+    player:notify(prefix + " TEXT_COLOR_: RED FEEDBACK_: Property not changed.");
+    player:notify(prefix + " SET_PROP_: 0");
+    return;
+  endif
+else
+  valuep = 0;
+endif
+result = object.(prop_name) = value;
+if (typeof(result) == ERR)
+  player:notify((prefix + " ERROR_: CANT_SET_PROP ") + tostr(result));
+  player:notify(prefix + " SET_PROP_: 0");
+  return;
+else
+  player:notify(prefix + " SET_PROP_: 1");
+  player:notify(prefix + " FEEDBACK_: Property changed.");
+endif
+if (spot = "PERMS_:" in args)
+  if ((spot == length(args)) || match(args[spot + 1], "_:$"))
+    perms = "";
+  else
+    perms = args[spot + 1];
+  endif
+  old_info = property_info(object, prop_name);
+  if (typeof(old_info) == ERR)
+    player:notify((prefix + " ERROR_: CANT_GET_PROP_INFO ") + tostr(old_info));
+  else
+    new_info = old_info;
+    new_info[2] = perms;
+    result = set_property_info(object, prop_name, new_info);
+    if (typeof(result) == ERR)
+      player:notify((prefix + " ERROR_: CANT_SET_PROP_INFO ") + tostr(result));
+    else
+      player:notify(prefix + " SET_PROP_: PERMS_CHANGED");
+      player:notify(prefix + " FEEDBACK_: Property permissions changed.");
+    endif
+  endif
+elseif (!valuep)
+  "Neither value nor perms supplied";
+  player:notify(prefix + " ERROR_: NOTHING_TO_CHANGE");
+endif
+"Amy  1/96";
+.
+
+@verb $macmoose_utils:"object_info" this none this rx
+@program $macmoose_utils:object_info
+"Syntax: object_info(<keyword/value argument pairs>)";
+"Keywords accepted:";
+"PREFIX_: <output prefix>";
+"           defaults to this.default_prefix";
+"OBJ_: <object>";
+"FILTER_UNDERSCORE_PROPS_: <boolean; defaults to this.filter_underscore_props_default>";
+"FILTER_UNDERSCORE_VERBS_: <boolean; defaults to this.filter_underscore_verbs_default>";
+"Last modified by jaime (#2) Wed Jul 17 11:16:57 1996 EDT.";
+if (caller != #0)
+  return E_PERM;
+endif
+set_task_perms(caller_perms());
+"Ensure proper input format.";
+prefix = ((spot = "PREFIX_:" in args) && (spot < length(args))) ? args[spot + 1] | this.default_prefix;
+filter_propsp = ((spot = "FILTER_UNDERSCORE_PROPS_:" in args) && (spot < length(args))) ? tonum(args[spot + 1]) | this.filter_underscore_props_default;
+filter_verbsp = ((spot = "FILTER_UNDERSCORE_VERBS_:" in args) && (spot < length(args))) ? tonum(args[spot + 1]) | this.filter_underscore_verbs_default;
+if (!(object = this:to_next_tag_str(args, "OBJ_:")))
+  player:notify(prefix + " ERROR_: MISSING_REQUIRED_ARG OBJ");
+  return;
+endif
+"Parse object";
+if (!valid(object = player:my_match_object(object)))
+  player:notify(prefix + " ERROR_: OBJECT_NOT_FOUND");
+  return;
+endif
+header = (((prefix + " OBJ_: ") + tostr(object)) + " OBJ_NAME_: ") + object.name;
+properties = this:findable_properties(object, filter_propsp);
+if (typeof(properties) == ERR)
+  player:notify((prefix + " ERROR_: CANT_GET_PROPS ") + tostr(properties));
+else
+  header = (header + " PROPS_: ") + this:scrunch_list(properties);
+endif
+verbs = this:verbs(object, filter_verbsp);
+if (typeof(verbs) == ERR)
+  player:notify((prefix + " ERROR_: CANT_GET_VERBS ") + tostr(verbs));
+else
+  header = (header + " VERBS_: ") + this:scrunch_list(verbs);
+endif
+player:notify(header);
+"Amy 1/96";
+.
+
+@verb $macmoose_utils:"findable_properties" this none this
+@program $macmoose_utils:findable_properties
+"findable_properties(object)";
+"Return a list of properties on those members of object's ancestor list that are readable or are owned by the caller (or all properties if the caller is a wizard).  Optionally filters out properties whose name begins with an underscore.";
+"Modified from $object_utils:findable_properties to support the filter_underscore feature -- Amy 9/95";
+"Last modified by jaime (#2) Mon Mar 11 14:35:58 1996 EST.";
+what = args[1];
+filter_underscore = {@args, 0}[2];
+props = {};
+who = caller_perms();
+while (what != $nothing)
+  if ((what.r || (who == what.owner)) || who.wizard)
+    item_props = properties(what);
+    new = {};
+    if (filter_underscore)
+      for prop in (item_props)
+        if (prop && (prop[1] != "_"))
+          new = {prop, @new};
+        endif
+      endfor
+    else
+      new = item_props;
+    endif
+    props = {@new, @props};
+  endif
+  what = parent(what);
+endwhile
+return props;
+"Amy  9/95: Modified to optionally filter out _ properties";
+"           Defaults to not filtering them out.";
+.
+
+@verb $macmoose_utils:"scrunch_list" this none this rxd $hacker
+@program $macmoose_utils:scrunch_list
+"Syntax: scrunch_list(list)";
+"Takes multiple lines of a list, and makes them into one string separated by /'s";
+"/'s are escaped with 's";
+"Note this will not do the right thing if the elements of the list are";
+"themselves lists.  You'd need to use $string_utils:print for that, which";
+"is not used here to save time.";
+"Last modified by jaime (#2) Mon Mar 11 14:35:59 1996 EST.";
+data = args[1];
+result = "";
+for item in (data)
+  result = (result + "/") + strsub(tostr(item), "/", "\\/");
+endfor
+result = result + "/";
+return result;
+"Amy 1/96";
+.
+
+@verb $macmoose_utils:"verbs" this none this rx
+@program $macmoose_utils:verbs
+"Syntax: verbs(object[,filter_underscore])";
+"For the record: this will give you a list of the verb names on a !r object.  This is the same behavior as the @verbs function in LambdaCore.  yduJ told me it was included there because using numeric verbnames you can get that info anyway.";
+"Last modified by jaime (#2) Wed May  7 14:22:34 1997 EDT.";
+object = args[1];
+filter_underscore = {@args, this.filter_underscore_verbs_default}[2];
+verbs = verbs(object);
+if ((!filter_underscore) || (typeof(verbs) == ERR))
+  return verbs;
+endif
+verbs_filtered = {};
+for verb in (verbs)
+  if ((!verb) || (!(verb[1] == "_")))
+    verbs_filtered = {@verbs_filtered, verb};
+  endif
+endfor
+return verbs_filtered;
+"Amy  1/96";
+.
+
+@verb $macmoose_utils:"object_parents" this none this rx
+@program $macmoose_utils:object_parents
+"Syntax: object_parents(<keyword/value argument pairs>)";
+"Keywords accepted:";
+"PREFIX_: <output prefix>";
+"           defaults to this.default_prefix";
+"OBJ_: <object>";
+"Returns: ";
+"OBJ_: <object>";
+"OBJ_NAME_: <object name>";
+"PARENT_OBJS_: <list of object numbers, separated by />";
+"PARENT_NAMES_: <list of name and number pairs, separated by />";
+"Last modified by jaime (#2) Wed Jul 17 11:17:10 1996 EDT.";
+if (caller != #0)
+  return E_PERM;
+endif
+set_task_perms(caller_perms());
+"Ensure proper input format.";
+prefix = ((spot = "PREFIX_:" in args) && (spot < length(args))) ? args[spot + 1] | this.default_prefix;
+if (!(object = this:to_next_tag_str(args, "OBJ_:")))
+  player:notify(prefix + " ERROR_: MISSING_REQUIRED_ARG OBJ");
+  return;
+endif
+"Parse object";
+if (!valid(object = player:my_match_object(object)))
+  player:notify(prefix + " ERROR_: OBJECT_NOT_FOUND");
+  return;
+endif
+header = (((prefix + " OBJ_: ") + tostr(object)) + " OBJ_NAME_: ") + object.name;
+parents = {object, @$object_utils:ancestors(object)};
+"I don't think it's possible to get an error here... no need to check for it.";
+header = (header + " PARENT_OBJS_: ") + this:scrunch_list_and_reverse(parents);
+parent_names = {};
+for OBJ in (parents)
+  parent_names = {@parent_names, $string_utils:nn(OBJ)};
+endfor
+header = (header + " PARENT_NAMES_: ") + this:scrunch_list_and_reverse(parent_names);
+player:notify(header);
+"Amy 1/96";
+.
+
+@verb $macmoose_utils:"verify_mail_recipients" this none this rx
+@program $macmoose_utils:verify_mail_recipients
+"Syntax: verify_mail_recipients(<keyword/value argument pairs>)";
+"Keywords accepted:";
+"PREFIX_: <output prefix>";
+"           defaults to this.default_prefix";
+"RECIPIENTS_: <list of recipients, separated by /'s; /'s escaped with 's>";
+"Returns:";
+"VALID_RECIPIENTS_: <list of valid recipient object numbers, separated by /'s>";
+"NONEXISTENT_RECIPIENTS_: <list of invalid recipient strings, separated by /'s>";
+"CANT_SEND_TO_: <list of recipient strings you do not have permission to mail to>";
+"Last modified by jaime (#2) Mon Nov 25 15:57:54 1996 EST.";
+if (caller != #0)
+  return E_PERM;
+endif
+set_task_perms(caller_perms());
+prefix = ((spot = "PREFIX_:" in args) && (spot < length(args))) ? args[spot + 1] | this.default_prefix;
+recipients = this:list_from_tokens(args, "RECIPIENTS_:", 0);
+if (!recipients)
+  player:notify(prefix + " ERROR_: MISSING_REQUIRED_ARG RECIPIENTS");
+  return;
+endif
+valid = {};
+invalid = {};
+no_write = {};
+for recip in (recipients)
+  if (valid(OBJ = $mail_agent:match_recipient(recip)))
+    if ($object_utils:isa(OBJ, $mail_recipient) && (!OBJ:is_usable_by(player)))
+      no_write = {@no_write, OBJ};
+    else
+      valid = {@valid, OBJ};
+    endif
+  else
+    invalid = {@invalid, recip};
+  endif
+endfor
+header = prefix;
+if (valid)
+  header = (header + " VALID_RECIPIENTS_: ") + this:scrunch_list(valid);
+endif
+if (invalid)
+  header = (header + " NONEXISTENT_RECIPIENTS_: ") + this:scrunch_list(invalid);
+endif
+if (no_write)
+  header = (header + " CANT_SEND_TO_: ") + this:scrunch_list(no_write);
+endif
+player:notify(header);
+"Amy  1/96";
+.
+
+@verb $macmoose_utils:"send_mail" this none this rx
+@program $macmoose_utils:send_mail
+"Syntax: verify_mail_recipients(<keyword/value argument pairs>)";
+"Keywords accepted:";
+"PREFIX_: <output prefix>";
+"           defaults to this.default_prefix";
+"RECIPIENTS_: <list of valid recipients, separated by /'s; /'s escaped with 's>";
+"SUBJECT_: <mail subject; could be more than one word>";
+"BODY_: <mail body; lines separated by /'s; /'s escaped with 's>";
+"Returns:";
+"SEND_MAIL_: <1/0>";
+"Last modified by jaime (#2) Fri Feb  5 16:03:32 1999 EST.";
+if (caller != #0)
+  return E_PERM;
+endif
+prefix = ((spot = "PREFIX_:" in args) && (spot < length(args))) ? args[spot + 1] | this.default_prefix;
+"Amy 10/98: stop repeat sending of messages!";
+if (args in this.recent)
+  player:notify(prefix + " ERROR_: MESSAGE_ALREADY_SENT");
+  return;
+endif
+this.recent = {@this.recent, args};
+if (length(this.recent) > this.recent_size)
+  this.recent = listdelete(this.recent, 1);
+endif
+if (!(this.moosep && player.admin))
+  set_task_perms(caller_perms());
+endif
+recipients = this:list_from_tokens(args, "RECIPIENTS_:");
+if (!recipients)
+  player:notify(prefix + " ERROR_: MISSING_REQUIRED_ARG RECIPIENTS");
+  return this.moosep ? $no_value | 0;
+endif
+to = {};
+for recip in (recipients)
+  to = recip ? {@to, toobj(recip)} | to;
+endfor
+if (#0 in to)
+  player:notify(prefix + " ERROR_: INVALID_RECIPIENT");
+  return;
+endif
+subject = ((spot = "SUBJECT_:" in args) && (spot < length(args))) ? this:to_next_tag_str(args, "SUBJECT_:") | "";
+body = this:list_from_tokens(args, "BODY_:");
+$command_utils:suspend_if_needed(0);
+result = $mail_agent:send_message(player, to, subject, body);
+if (typeof(result) == ERR)
+  player:notify((prefix + " ERROR_: CANT_SEND_MESSAGE ") + tostr(result));
+elseif (!result[1])
+  player:notify((prefix + " ERROR_: INVALID_RECIPIENTS ") + this:scrunch_list(result[2]));
+else
+  header = prefix + " SEND_MAIL_: 1";
+  player:notify(header);
+  player:notify(("Mail sent to " + $string_utils:name_and_number_list(to)) + ".");
+endif
+"Amy  1/96";
+"Amy 10/98: added fix for repeated message sending";
+.
+
+@verb $macmoose_utils:"verb_info_and_args" this none this rx
+@program $macmoose_utils:verb_info_and_args
+"Syntax: verb_info_and_args(<object>, <vname>)";
+"Assumes the verb already exists";
+"Last modified by jaime (#2) Wed Jul 17 11:15:06 1996 EDT.";
+if (caller != this)
+  return E_PERM;
+endif
+set_task_perms(caller_perms());
+"This verb relies on being !d";
+object = args[1];
+vname = args[2];
+result = "";
+vi = verb_info(object, vname);
+if (typeof(vi) == ERR)
+  result = (result + " CANT_GET_VERB_INFO ") + tostr(vi);
+else
+  result = (result + " VERB_OWNER_: ") + tostr(vi[1]);
+  result = (result + " VERB_PERMS_: ") + vi[2];
+endif
+vargs = verb_args(object, vname);
+if (typeof(vargs) == ERR)
+  result = (result + " CANT_GET_VERB_ARGS ") + tostr(vargs);
+else
+  result = (result + " VERB_DOBJ_: ") + vargs[1];
+  result = (result + " VERB_PREP_: ") + vargs[2];
+  result = (result + " VERB_IOBJ_: ") + vargs[3];
+endif
+return result;
+"Amy 11/95";
+.
+
+@verb $macmoose_utils:"scrunch_list_and_reverse" this none this rxd $hacker
+@program $macmoose_utils:scrunch_list_and_reverse
+"Copied from MacMOOSE Utils ($macmoose_utils):scrunch_list by Hacker (#38) Tue Feb  6 18:56:05 1996 EST";
+"Syntax: scrunch_list(list)";
+"Takes multiple lines of a list, and makes them into one string separated by /'s";
+"/'s are escaped with 's";
+"Note this will not do the right thing if the elements of the list are";
+"themselves lists.  You'd need to use $string_utils:print for that, which";
+"is not used here to save time.";
+"Last modified by jaime (#2) Mon Mar 11 14:36:03 1996 EST.";
+data = args[1];
+result = "";
+for item in (data)
+  result = (strsub(tostr(item), "/", "\\/") + "/") + result;
+endfor
+result = "/" + result;
+return result;
+"Amy 1/96";
+.
+
+@verb $macmoose_utils:"list_from_tokens" this none this rxd $hacker
+@program $macmoose_utils:list_from_tokens
+"Syntax: list_from_tokens(list <tokens>, string <tag>[, boolean <check_unmatched_quotesp>)";
+"Last modified by jaime (#2) Mon Nov 25 15:58:38 1996 EST.";
+tokens = args[1];
+tag = args[2];
+lines = {};
+current = {};
+tokens = $macmoose_utils:to_next_tag(tokens, tag);
+if (!tokens)
+  return 0;
+endif
+for index in [1..length(tokens)]
+  $command_utils:suspend_if_needed(0);
+  tok = tokens[index];
+  if (tok == "/")
+    if (index != 1)
+      "Don't add extra leading blank";
+      lines = {@lines, current};
+      current = {};
+    endif
+  else
+    current = {@current, tok};
+  endif
+endfor
+lines = current ? {@lines, current} | lines;
+result = {};
+for line in (lines)
+  line = this:reassemble_line(line);
+  line = strsub(line, "\\/", "/");
+  result = {@result, line};
+endfor
+return result;
+"Amy 6/96: Added support for compound operators";
+.
+
+@verb $macmoose_utils:"reassemble_line" this none this rxd $hacker
+@program $macmoose_utils:reassemble_line
+"Syntax: reassemble_line(<lists of tokens>)";
+"Reassembles one line from a list of tokens";
+"Last modified by jaime (#2) Mon Nov 25 15:59:19 1996 EST.";
+line = args[1];
+special = {"/", " "};
+punctuation = {",", ".", " ", ";", ":"};
+no_space_before = {",", ")", "[", "]"};
+no_space_after = {"(", "[", "{"};
+if (typeof(line) != LIST)
+  "$command_utils:warn(Trying to reassemble non-list: , line)";
+  return tostr(line);
+endif
+if ((l = length(line)) == 0)
+  return "";
+else
+  line_string = line[1];
+endif
+if (l > 1)
+  no_space = 0;
+  for token_number in [2..l]
+    $command_utils:suspend_if_needed(0);
+    next = line[token_number];
+    next_leading = ((typeof(next) == STR) && length(next)) ? next[1] | "";
+    last = length(line_string) ? line_string[length(line_string)] | "";
+    if ((((((!(last in special)) && (!(next_leading in special))) && (!(last in no_space_after))) && (!(next_leading in no_space_before))) && (!no_space)) && (!((next_leading == last) && (next_leading == "-"))))
+      line_string = line_string + " ";
+    endif
+    line_string = line_string + next;
+    no_space = 0;
+  endfor
+endif
+return line_string;
+"Amy  4/94";
+"Amy 12/94: Added $no_space as a way to indicate not to add a space.";
+"Amy  5/95: Fixed bug with punctuation after '";
+"Amy  6/96: Major simplification--removed counting of quotes";
+.
+
+@verb $macmoose_utils:"print_no_quotes" this none this rxd $hacker
+@program $macmoose_utils:print_no_quotes
+"Returns the output of 'print' without adding surrounding quotes";
+"Last modified by jaime (#2) Mon May 13 12:36:30 1996 EDT.";
+value = args[1];
+type = typeof(value);
+if (type == LIST)
+  string = $string_utils:print(@args);
+  $command_utils:suspend_if_needed(0);
+  if ((((l = length(string)) > 1) && (string[1] == string[l])) && (string[1] == "\""))
+    string = string[2..length(string) - 1];
+  endif
+  return string;
+else
+  return tostr(value);
+endif
+"Amy 9/94";
+"Amy 1/95 -- Made not add  before quotes and  ";
+.
+
+@verb $macmoose_utils:"simple_tokenize" this none this rxd $hacker
+@program $macmoose_utils:simple_tokenize
+"Syntax: simple_tokenize(string <command>)";
+"Adapted from $string_utils:words";
+"Parses input, splitting on spaces and MacMOOSE line separators";
+"Line separators are slashes not escaped by a backslash.";
+"Last modified by jaime (#2) Wed Nov 27 15:33:34 1996 EST.";
+rest = args[1];
+"...trim leading blanks...";
+rest[1..match(rest, "^ *")[2]] = "";
+if (!rest)
+  return {};
+endif
+quote = 0;
+toklist = {};
+token = "";
+operators = "/";
+in_a_quoted_string_pattern = "%(\\.%|^/%|%([^\\]%|^%)[/\"]%)";
+normal_pattern = " +%|" + in_a_quoted_string_pattern;
+pattern = normal_pattern;
+while (m = match(rest, pattern))
+  $command_utils:suspend_if_needed(0);
+  char = rest[m[1]];
+  endchar = rest[m[2]];
+  if (char == "\\")
+    "Backslash.  Include the next character literally.";
+    token = token + rest[1..m[2]];
+  elseif (quote)
+    "... Closing quoted string.  Restore old pattern ...";
+    pattern = normal_pattern;
+    quote = 0;
+    token = token + rest[1..m[2]];
+    if (token && (token[length(token)] == "/"))
+      "Uneven number of quotes on line; end quoted string and start new line";
+      if (length(token) > 1)
+        toklist = {@toklist, token[1..length(token) - 1]};
+      endif
+      toklist = {@toklist, "/"};
+    elseif (token != "")
+      toklist = {@toklist, token};
+    endif
+    token = "";
+  else
+    if (endchar == " ")
+      token = token + rest[1..m[1] - 1];
+      if (token != "")
+        toklist = {@toklist, token};
+        token = "";
+      endif
+    elseif (endchar == "\"")
+      token = token + rest[1..m[2] - 1];
+      if (!((m[2] != m[1]) && (rest[m[1]] == "\"")))
+        "... beginning of quoted string ...";
+        "... Opening a quoted string.  Set new pattern ...";
+        pattern = in_a_quoted_string_pattern;
+        quote = 1;
+      endif
+      token = token + "\"";
+    elseif (endchar == "/")
+      token = token + rest[1..m[2] - 1];
+      if (token != "")
+        toklist = {@toklist, token};
+      endif
+      toklist = {@toklist, endchar};
+      token = "";
+    else
+      player:tell("Error: unknown case.");
+    endif
+  endif
+  rest[1..m[2]] = "";
+endwhile
+if (rest || token)
+  toklist = {@toklist, token + rest};
+endif
+return toklist;
+"Amy 12/93";
+"Amy  2/94: made it leave in quotes.";
+"Amy  1/95: made split on arithmetic operators and comparative operators";
+"Amy  2/95: made splitting on / an option";
+"Amy  3/95: made leave in commas";
+"Amy 12/95: major simplifications, removing compound operators and split_on_slashP";
+"Amy  1/96: made split on [ and ]";
+.
+
+@verb $macmoose_utils:"simple_verb_name" this none this rxd $hacker
+@program $macmoose_utils:simple_verb_name
+"Turn a complex verb specifier like 'g*et take' into simply g";
+"Useful for attempting to actually call a verb by that name";
+"Amy Bruckman 11/22/93";
+"Last modified by jaime (#2) Tue Jun 11 14:58:22 1996 EDT.";
+simple_name = $string_utils:trim(args[1]);
+if (typeof(simple_name) != STR)
+  return simple_name;
+endif
+"Trim off an asterisk and anything following it";
+if (star = index(simple_name, "*"))
+  simple_name = simple_name[1..star - 1];
+endif
+"Trim off multiple names for simple_name with an alias";
+if (space = index(simple_name, " "))
+  simple_name = simple_name[1..space - 1];
+endif
+return simple_name;
+.
+
+"***finished***
