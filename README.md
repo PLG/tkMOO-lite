@@ -16,6 +16,7 @@ and no comments cost me a single solid day of headache. ARGH!
 - commit'd MacMOOSE_utils by Amy Bruckman, for convenience
   http://www.cc.gatech.edu/elc/macmoose/MacMOOSE_utils.html
   This package is required to enable MacMOOSE in tkMOO-lite
+- MacMOOSE_utils: modified 0:"do_out_of_band_command" to keep $mcp support
 
 -PLG
 

@@ -26,22 +26,21 @@
 "*** you will need to integrate our version with yours.
 
 @program #0:"do_out_of_band_command"   this none this
-"Last modified by jaime (#2) Wed Nov 27 15:30:31 1996 EST.";
+"Last modified Mon Jan 30 19:35:32 2012 CET by PLG (#2).";
 if (callers())
   return E_PERM;
 elseif (!valid(player))
   return;
-else
-  set_task_perms(player);
 endif
 if (length(args) > 1 && args[1] == "#$#MacMOOSE")
+  set_task_perms(player);
   oob_verb = args[2];
   tokens = $macmoose_utils:simple_tokenize(argstr);
   $command_utils:suspend_if_needed(0);
   oob_args = (len = length(tokens)) > 2 ? tokens[3..len] | {};
   $macmoose_utils:(oob_verb)(@oob_args);
 else
-  player:tell("Unrecognized out of band command: ", argstr);
+  return $mcp:(verb)(@args);
 endif
 .
 
